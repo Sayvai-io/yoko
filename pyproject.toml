@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "pygarment"
+version = "0.1.0"
+description = ""
+authors = ["subash-19 <subashs20018@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pyyaml = "6.0.2"
+scipy = "^1.14.1"
+svgwrite = "^1.4.3"
+svgpathtools = "^1.6.1"
+psutil = "^6.1.1"
+matplotlib = "^3.10.0"
+cairosvg = "^2.7.1"
+nicegui = "^2.9.0"
+trimesh = "^4.5.3"
+libigl = "^2.5.1"
+pyrender = "^0.1.45"
+numpy = "^2.2.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
