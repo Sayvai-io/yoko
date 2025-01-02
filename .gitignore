@@ -9,6 +9,9 @@ __pycache__
 # PyCharm
 .idea
 
+#Environment file
+.env
+
 # Compiled files
 *.pyc
 dist
