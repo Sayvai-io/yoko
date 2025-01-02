@@ -12,7 +12,7 @@ from pathlib import Path
 import time
 import base64
 
-from nicegui import ui, app, events
+from nicegui import ui, app, events, background_tasks
 
 # Async execution of regular functions
 from concurrent.futures import ThreadPoolExecutor
@@ -554,8 +554,15 @@ class GUIState:
                     ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
         
         try:
-            # Process input through LLM
-            params = await self.pattern_parser.process_input(text=self.chat_input.value)
+            # Show existing spinner dialog
+            self.spin_dialog.open()
+            
+            # Process input through LLM using ThreadPoolExecutor
+            loop = asyncio.get_event_loop()
+            params = await loop.run_in_executor(
+                self._async_executor,
+                lambda: self.pattern_parser.process_input(text=self.chat_input.value)
+            )
             
             # Update design parameters
             self.toggle_param_update_events(self.ui_design_refs)
@@ -571,6 +578,14 @@ class GUIState:
                         ui.label("I've updated the pattern based on your description. You can adjust the parameters further if needed.").classes('text-gray-800')
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
 
+        except TimeoutError:
+            ui.notify('Request timed out. Please try again.', type='negative')
+            with self.chat_container:
+                with ui.card().classes('w-3/4 mr-auto bg-red-100 rounded-lg'):
+                    with ui.column().classes('p-3 gap-1'):
+                        ui.label("Sorry, the request took too long. Please try again with a simpler description.").classes('text-gray-800')
+                        ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+
         except Exception as e:
             ui.notify(f"Failed to process input: {str(e)}", type='negative')
             with self.chat_container:
@@ -579,8 +594,11 @@ class GUIState:
                         ui.label("Sorry, I couldn't process that input. Please try again.").classes('text-gray-800')
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
     
-        # Clear input
-        self.chat_input.value = ''
+        finally:
+            # Always close the spinner dialog
+            self.spin_dialog.close()
+            # Clear input
+            self.chat_input.value = ''
 
     async def handle_image_upload(self, e: events.UploadEventArguments):
         """Handle uploaded reference images"""
@@ -597,8 +615,15 @@ class GUIState:
                     ui.image(data_url).classes('w-full rounded-lg')
                     ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500 p-2')
 
-            # Process through LLM
-            params = await self.pattern_parser.process_input(image_data=(image_bytes, content_type))
+            # Show spinner while processing
+            self.spin_dialog.open()
+
+            # Process through LLM using ThreadPoolExecutor
+            loop = asyncio.get_event_loop()
+            params = await loop.run_in_executor(
+                self._async_executor,
+                lambda: self.pattern_parser.process_input(image_data=(image_bytes, content_type))
+            )
             
             # Update design parameters
             self.toggle_param_update_events(self.ui_design_refs)
@@ -624,6 +649,8 @@ class GUIState:
                     with ui.column().classes('p-3 gap-1'):
                         ui.label("Sorry, I couldn't process that image. Please try again.").classes('text-gray-800')
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+        finally:
+            self.spin_dialog.close()
 
     # !SECTION
     # SECTION -- Event callbacks
