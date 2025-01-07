@@ -94,7 +94,7 @@ class PatternParser:
 
         # Function to encode the image
         def encode_image(image_data: bytes) -> str:
-            logger.info(f"[bold green]Encoding image data {image_data}[/bold green]")
+            # logger.info(f"[bold green]Encoding image data {image_data}[/bold green]")
             return base64.b64encode(image_data[0]).decode("utf-8")
 
         user_messages = []
@@ -113,7 +113,7 @@ class PatternParser:
         # Add image content if provided
         if image_data:
             base64_image = encode_image(image_data)
-            logger.info(f"[bold green]Image encoded and the type {type(image_data)} {image_data} [/bold green]")
+            # logger.info(f"[bold green]Image encoded and the type {type(image_data)} {image_data} [/bold green]")
             user_messages.append(
                 {
                     "type": "image_url",
@@ -128,7 +128,7 @@ class PatternParser:
 
         # Prepare the API request
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {
                     "role": "system",
@@ -145,8 +145,12 @@ class PatternParser:
         )
 
         logger.info("[bold green]Model response received[/bold green]")
-
+        logger.debug(f"Response: {response}")
         # Extract the configuration dictionary from the response
-        config_dict = json.loads(response.choices[0].message.content)
-        logger.debug(f"Generated config: {config_dict}")
+        try:
+            config_dict = json.loads(response.choices[0].message.content)
+            logger.debug(f"Generated config: {config_dict}")
+        except Exception as e:
+            logger.error(f"[bold red]Error extracting configuration dictionary:[/bold red] {str(e)}")
+
         return config_dict
