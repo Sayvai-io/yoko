@@ -12,7 +12,7 @@ from pathlib import Path
 import time
 import base64
 
-from nicegui import ui, app, events
+from nicegui import ui, app, events, background_tasks
 
 # Async execution of regular functions
 from concurrent.futures import ThreadPoolExecutor
@@ -20,6 +20,7 @@ import asyncio
 
 # Custom
 from .gui_pattern import GUIPattern
+from .pattern_parser import PatternParser
 
 
 icon_github = """
@@ -91,6 +92,8 @@ class GUIState:
         self.pattern_state.reload_garment()
         self.stylings()
         self.layout()
+
+        self.pattern_parser = PatternParser()
 
     def release(self):
         """Clean-up after the sesssion"""
@@ -550,31 +553,104 @@ class GUIState:
                     ui.label(self.chat_input.value).classes('text-gray-800')
                     ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
         
-        # Clear input
-        self.chat_input.value = ''
-        
-        # TODO: Process the text input for pattern generation
-        # The results will be shown in the right panel
+        try:
+            # Show existing spinner dialog
+            self.spin_dialog.open()
+            
+            # Process input through LLM using ThreadPoolExecutor
+            loop = asyncio.get_event_loop()
+            params = await loop.run_in_executor(
+                self._async_executor,
+                lambda: self.pattern_parser.process_input(text=self.chat_input.value)
+            )
+            
+            # Update design parameters
+            self.toggle_param_update_events(self.ui_design_refs)
+            self.pattern_state.set_new_design(params)
+            self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
+            await self.update_pattern_ui_state()
+            self.toggle_param_update_events(self.ui_design_refs)
+
+            # Add system response
+            with self.chat_container:
+                with ui.card().classes('w-3/4 mr-auto bg-white rounded-lg'):
+                    with ui.column().classes('p-3 gap-1'):
+                        ui.label("I've updated the pattern based on your description. You can adjust the parameters further if needed.").classes('text-gray-800')
+                        ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+
+        except TimeoutError:
+            ui.notify('Request timed out. Please try again.', type='negative')
+            with self.chat_container:
+                with ui.card().classes('w-3/4 mr-auto bg-red-100 rounded-lg'):
+                    with ui.column().classes('p-3 gap-1'):
+                        ui.label("Sorry, the request took too long. Please try again with a simpler description.").classes('text-gray-800')
+                        ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+
+        except Exception as e:
+            ui.notify(f"Failed to process input: {str(e)}", type='negative')
+            with self.chat_container:
+                with ui.card().classes('w-3/4 mr-auto bg-red-100 rounded-lg'):
+                    with ui.column().classes('p-3 gap-1'):
+                        ui.label("Sorry, I couldn't process that input. Please try again.").classes('text-gray-800')
+                        ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+    
+        finally:
+            # Always close the spinner dialog
+            self.spin_dialog.close()
+            # Clear input
+            self.chat_input.value = ''
 
     async def handle_image_upload(self, e: events.UploadEventArguments):
         """Handle uploaded reference images"""
         try:
+            # Convert SpooledTemporaryFile to bytes and create data URL
+            image_bytes = e.content.read()
+            content_type = e.type or 'image/png'  # fallback to png if type not provided
+            data_url = f'data:{content_type};base64,{base64.b64encode(image_bytes).decode()}'
+            
             # Add user message with image
             with self.chat_container:
-                with ui.card().classes('w-3/4 ml-auto bg-primary text-white'):
+                with ui.card().classes('w-3/4 ml-auto bg-gray-200 rounded-lg'):
                     ui.label('Reference image:').classes('p-2')
-                    # Convert SpooledTemporaryFile to bytes and create data URL
-                    image_bytes = e.content.read()
-                    content_type = e.type or 'image/png'  # fallback to png if type not provided
-                    data_url = f'data:{content_type};base64,{base64.b64encode(image_bytes).decode()}'
-                    # Display uploaded image
                     ui.image(data_url).classes('w-full rounded-lg')
+                    ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500 p-2')
+
+            # Show spinner while processing
+            self.spin_dialog.open()
+
+            # Process through LLM using ThreadPoolExecutor
+            loop = asyncio.get_event_loop()
+            params = await loop.run_in_executor(
+                self._async_executor,
+                lambda: self.pattern_parser.process_input(image_data=(image_bytes, content_type))
+            )
             
-            # TODO: Process the reference image for pattern generation
-            
-            ui.notify(f'Successfully uploaded {e.name}')
+            # Update design parameters
+            self.toggle_param_update_events(self.ui_design_refs)
+            self.pattern_state.set_new_design(params)
+            self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
+            await self.update_pattern_ui_state()
+            self.toggle_param_update_events(self.ui_design_refs)
+
+            # Add system response
+            with self.chat_container:
+                with ui.card().classes('w-3/4 mr-auto bg-white rounded-lg'):
+                    with ui.column().classes('p-3 gap-1'):
+                        ui.label("I've updated the pattern based on your reference image. You can adjust the parameters further if needed.").classes('text-gray-800')
+                        ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+
+            ui.notify(f'Successfully processed {e.name}')
+            self.upload_dialog.close()
+
         except Exception as err:
-            ui.notify(f'Failed to upload image: {str(err)}', type='negative')
+            ui.notify(f'Failed to process image: {str(err)}', type='negative')
+            with self.chat_container:
+                with ui.card().classes('w-3/4 mr-auto bg-red-100 rounded-lg'):
+                    with ui.column().classes('p-3 gap-1'):
+                        ui.label("Sorry, I couldn't process that image. Please try again.").classes('text-gray-800')
+                        ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+        finally:
+            self.spin_dialog.close()
 
     # !SECTION
     # SECTION -- Event callbacks
@@ -834,23 +910,3 @@ class GUIState:
         """Download current state of a garment"""
         archive_path = self.pattern_state.save()
         ui.download(archive_path, f'Configured_design_{datetime.now().strftime("%y%m%d-%H-%M-%S")}.zip')
-
-    async def handle_image_upload(self, e: events.UploadEventArguments):
-        """Handle uploaded reference images"""
-        try:
-            # Add user message with image
-            with self.chat_container:
-                with ui.card().classes('w-3/4 ml-auto bg-primary text-white'):
-                    ui.label('Reference image:').classes('p-2')
-                    # Convert SpooledTemporaryFile to bytes and create data URL
-                    image_bytes = e.content.read()
-                    content_type = e.type or 'image/png'  # fallback to png if type not provided
-                    data_url = f'data:{content_type};base64,{base64.b64encode(image_bytes).decode()}'
-                    # Display uploaded image
-                    ui.image(data_url).classes('w-full rounded-lg')
-            
-            # TODO: Process the reference image for pattern generation
-            
-            ui.notify(f'Successfully uploaded {e.name}')
-        except Exception as err:
-            ui.notify(f'Failed to upload image: {str(err)}', type='negative')

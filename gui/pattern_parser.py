@@ -1,0 +1,152 @@
+"""Module to handle LLM-based pattern parameter generation from text/image input"""
+
+import base64
+from typing import Dict, Union, Tuple, Optional
+from datetime import datetime
+from pathlib import Path
+import json
+import base64
+from openai import OpenAI
+import json
+import os
+from dotenv import load_dotenv
+from gui.utils import system_prompt, template
+import logging
+from rich.logging import RichHandler
+from rich.console import Console
+
+load_dotenv()
+
+# Initialize the rich console and logger
+console = Console()
+logging.basicConfig(level=logging.DEBUG, format="%(message)s",
+                    handlers=[RichHandler(rich_tracebacks=True, console=console)])
+logger = logging.getLogger("rich")
+
+
+class PatternParser:
+    def __init__(self):
+        # Initialize any LLM/vision model clients here
+        logger.info("[bold green]PatternParser initialized[/bold green]")
+
+    def process_input(
+            self,
+            text: Optional[str] = None,
+            image_data: Optional[Tuple[bytes, str]] = None
+    ) -> Dict:
+        """Process text and/or image input to generate pattern parameters
+
+        Args:
+            text: Text description of the desired garment
+            image_data: Tuple of (image_bytes, content_type)
+
+        Returns:
+            Dictionary of pattern parameters
+        """
+        try:
+            # Store inputs for reference
+            if text:
+                self._save_text_input(text)
+            if image_data:
+                self._save_image_input(*image_data)
+
+            # Pass inputs to parameter generation
+            logger.info(f"[bold green] type of image data {type(image_data)} [/bold green]")
+            params = self._generate_dummy_params(text, image_data)
+
+            return params
+
+        except Exception as e:
+            logger.error(f"[bold red]Error processing input:[/bold red] {str(e)}")
+            raise
+
+    def _save_text_input(self, text: str):
+        """Save text input for reference/training"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_dir = Path("./data/pattern_inputs/text")
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(save_dir / f"input_{timestamp}.txt", "w") as f:
+            f.write(text)
+
+        logger.info(f"[bold cyan]Text input saved[/bold cyan] to {save_dir / f'input_{timestamp}.txt'}")
+
+    def _save_image_input(self, image_bytes: bytes, content_type: str):
+        """Save image input for reference/training"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_dir = Path("./data/pattern_inputs/images")
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        ext = content_type.split("/")[-1]
+        with open(save_dir / f"input_{timestamp}.{ext}", "wb") as f:
+            f.write(image_bytes)
+
+        logger.info(f"[bold cyan]Image input saved[/bold cyan] to {save_dir / f'input_{timestamp}.{ext}'}")
+
+    def _generate_dummy_params(self, text: Optional[str] = None,
+                               image_data: bytes = None) -> Dict:
+        # Ensure you have the necessary client setup for OpenAI
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+        logger.info("[bold yellow]Generating parameters using provided inputs[/bold yellow]")
+        logger.debug(f"Text: {text}")
+        # logger.debug(f"Image data: {image_data}")
+
+        # Function to encode the image
+        def encode_image(image_data: bytes) -> str:
+            logger.info(f"[bold green]Encoding image data {image_data}[/bold green]")
+            return base64.b64encode(image_data[0]).decode("utf-8")
+
+        user_messages = []
+
+        user_messages.append({
+            "type": "text",
+            "text": f"Using this template as base:\n{template}\n\nReturn ONLY a modified configuration dictionary based "
+                    f"on the following request. Modify just the 'v' values while preserving all structure, ranges, types"
+                    f" and default_prob values:"
+        })
+
+        # Add text content if provided
+        if text:
+            user_messages.append({"type": "text", "text": text})
+
+        # Add image content if provided
+        if image_data:
+            base64_image = encode_image(image_data)
+            logger.info(f"[bold green]Image encoded and the type {type(image_data)} {image_data} [/bold green]")
+            user_messages.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                }
+            )
+
+        if not user_messages:
+            raise ValueError("Either text or image_file must be provided.")
+
+        logger.info("[bold yellow]Requesting model completion[/bold yellow]")
+
+        # Prepare the API request
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": user_messages
+                }
+            ],
+            response_format={
+                "type": "json_object"
+            }
+        )
+
+        logger.info("[bold green]Model response received[/bold green]")
+
+        # Extract the configuration dictionary from the response
+        config_dict = json.loads(response.choices[0].message.content)
+        logger.debug(f"Generated config: {config_dict}")
+        return config_dict
