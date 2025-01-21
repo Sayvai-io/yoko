@@ -18,16 +18,17 @@ from rich.console import Console
 load_dotenv()
 
 # Initialize the rich console and logger
-console = Console()
-logging.basicConfig(level=logging.DEBUG, format="%(message)s",
-                    handlers=[RichHandler(rich_tracebacks=True, console=console)])
-logger = logging.getLogger("rich")
+# console = Console()
+# logging.basicConfig(level=logging.DEBUG, format="%(message)s",
+#                     handlers=[RichHandler(rich_tracebacks=True, console=console)])
+# logger = logging.getLogger("rich")
 
 
 class PatternParser:
     def __init__(self):
         # Initialize any LLM/vision model clients here
-        logger.info("[bold green]PatternParser initialized[/bold green]")
+        # logger.info("[bold green]PatternParser initialized[/bold green]")
+        pass
 
     def process_input(
             self,
@@ -51,13 +52,13 @@ class PatternParser:
                 self._save_image_input(*image_data)
 
             # Pass inputs to parameter generation
-            logger.info(f"[bold green] type of image data {type(image_data)} [/bold green]")
+            # logger.info(f"[bold green] type of image data {type(image_data)} [/bold green]")
             params = self._generate_dummy_params(text, image_data)
 
             return params
 
         except Exception as e:
-            logger.error(f"[bold red]Error processing input:[/bold red] {str(e)}")
+            # logger.error(f"[bold red]Error processing input:[/bold red] {str(e)}")
             raise
 
     def _save_text_input(self, text: str):
@@ -69,7 +70,7 @@ class PatternParser:
         with open(save_dir / f"input_{timestamp}.txt", "w") as f:
             f.write(text)
 
-        logger.info(f"[bold cyan]Text input saved[/bold cyan] to {save_dir / f'input_{timestamp}.txt'}")
+        # logger.info(f"[bold cyan]Text input saved[/bold cyan] to {save_dir / f'input_{timestamp}.txt'}")
 
     def _save_image_input(self, image_bytes: bytes, content_type: str):
         """Save image input for reference/training"""
@@ -81,20 +82,20 @@ class PatternParser:
         with open(save_dir / f"input_{timestamp}.{ext}", "wb") as f:
             f.write(image_bytes)
 
-        logger.info(f"[bold cyan]Image input saved[/bold cyan] to {save_dir / f'input_{timestamp}.{ext}'}")
+        # logger.info(f"[bold cyan]Image input saved[/bold cyan] to {save_dir / f'input_{timestamp}.{ext}'}")
 
     def _generate_dummy_params(self, text: Optional[str] = None,
                                image_data: bytes = None) -> Dict:
         # Ensure you have the necessary client setup for OpenAI
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-        logger.info("[bold yellow]Generating parameters using provided inputs[/bold yellow]")
-        logger.debug(f"Text: {text}")
+        # logger.info("[bold yellow]Generating parameters using provided inputs[/bold yellow]")
+        # logger.debug(f"Text: {text}")
         # logger.debug(f"Image data: {image_data}")
 
         # Function to encode the image
         def encode_image(image_data: bytes) -> str:
-            logger.info(f"[bold green]Encoding image data {image_data}[/bold green]")
+            # logger.info(f"[bold green]Encoding image data {image_data}[/bold green]")
             return base64.b64encode(image_data[0]).decode("utf-8")
 
         user_messages = []
@@ -107,13 +108,14 @@ class PatternParser:
         })
 
         # Add text content if provided
+        text =  "From the provided image and template, please generate a parameter configuration for the garment."
         if text:
             user_messages.append({"type": "text", "text": text})
 
         # Add image content if provided
         if image_data:
             base64_image = encode_image(image_data)
-            logger.info(f"[bold green]Image encoded and the type {type(image_data)} {image_data} [/bold green]")
+            # logger.info(f"[bold green]Image encoded and the type {type(image_data)} {image_data} [/bold green]")
             user_messages.append(
                 {
                     "type": "image_url",
@@ -124,14 +126,14 @@ class PatternParser:
         if not user_messages:
             raise ValueError("Either text or image_file must be provided.")
 
-        logger.info("[bold yellow]Requesting model completion[/bold yellow]")
+        # logger.info("[bold yellow]Requesting model completion[/bold yellow]")
 
         # Prepare the API request
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {
-                    "role": "system",
+                    "role": "assistant",
                     "content": system_prompt
                 },
                 {
@@ -144,9 +146,10 @@ class PatternParser:
             }
         )
 
-        logger.info("[bold green]Model response received[/bold green]")
+        # logger.info("[bold green]Model response received[/bold green]")
 
         # Extract the configuration dictionary from the response
+        print(response)
         config_dict = json.loads(response.choices[0].message.content)
-        logger.debug(f"Generated config: {config_dict}")
+        # logger.debug(f"Generated config: {config_dict}")
         return config_dict
