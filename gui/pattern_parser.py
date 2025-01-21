@@ -108,7 +108,7 @@ class PatternParser:
         })
 
         # Add text content if provided
-        text =  "give me the params for this design in the image"
+        text =  "From the provided image and template, please generate a parameter configuration for the garment."
         if text:
             user_messages.append({"type": "text", "text": text})
 
