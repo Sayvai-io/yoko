@@ -108,9 +108,13 @@ class PatternParser:
         })
 
         # Add text content if provided
-        text =  "From the provided image and template, please generate a parameter configuration for the garment."
+        # text =  "From the provided image and template, please generate a parameter configuration for the garment."
         if text:
             user_messages.append({"type": "text", "text": text})
+        else:
+            text =  "From the provided image and template, please generate a parameter configuration for the garment."
+            user_messages.append({"type": "text", "text": text})
+
 
         # Add image content if provided
         if image_data:
@@ -127,6 +131,7 @@ class PatternParser:
             raise ValueError("Either text or image_file must be provided.")
 
         # logger.info("[bold yellow]Requesting model completion[/bold yellow]")
+        print(user_messages)
 
         # Prepare the API request
         response = client.chat.completions.create(
@@ -149,7 +154,7 @@ class PatternParser:
         # logger.info("[bold green]Model response received[/bold green]")
 
         # Extract the configuration dictionary from the response
-        print(response)
+        # print(response)
         config_dict = json.loads(response.choices[0].message.content)
         # logger.debug(f"Generated config: {config_dict}")
         return config_dict
