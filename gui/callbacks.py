@@ -1,3 +1,4 @@
+
 """Callback functions & State info for Sewing Pattern Configurator """
 
 # NOTE: NiceGUI reference: https://nicegui.io/
@@ -11,6 +12,8 @@ import shutil
 from pathlib import Path
 import time
 import base64
+
+from .mmua import prompt_enhancer
 
 from nicegui import ui, app, events, background_tasks
 
@@ -59,6 +62,9 @@ class GUIState:
     def __init__(self) -> None:
         self.window = None
 
+        self.content_type = None
+        self.image_bytes = None
+        self.last_chat_input = None
         # Pattern
         self.pattern_state = GUIPattern()
 
@@ -598,12 +604,15 @@ class GUIState:
             # Always close the spinner dialog
             self.spin_dialog.close()
             # Clear input
+            self.last_chat_input = self.chat_input.value
             self.chat_input.value = ''
 
     async def handle_image_upload(self, e: events.UploadEventArguments):
         """Handle uploaded reference images"""
         try:
             # Convert SpooledTemporaryFile to bytes and create data URL
+            self.image_bytes = e.content.read()
+            self.content_type = e.type or 'image/png'  # fallback to png if type not provided
             image_bytes = e.content.read()
             content_type = e.type or 'image/png'  # fallback to png if type not provided
             data_url = f'data:{content_type};base64,{base64.b64encode(image_bytes).decode()}'
@@ -859,6 +868,28 @@ class GUIState:
                 close_button=True,
                 position='center'
             )
+            
+    async def upgrade_prompt(self):
+        
+        if self.image_bytes is not None and self.content_type is not None:
+            image_path = self.pattern_parser._save_image_input(self.image_bytes, self.content_type)
+        else:
+            image_path = None
+            
+        text = self.last_chat_input
+        front_view_path = f"{self.local_path_3d}/Configured_design_3D_render_front.png",
+        back_view_path = f"{self.local_path_3d}/Configured_design_3D_render_back.png",
+        
+        print("\n\nThe text prompt data\n " , text)
+        print("\n\nThe image prompt image path\n " , image_path)
+        print("\n\nThe 3d front image path\n " , front_view_path)
+        print("\n\nThe 3d back image path\n " , back_view_path)
+        # all the 3 image will have the path now..         
+        enhanced_prompt = prompt_enhancer(text, image_path, front_view_path, back_view_path) # new AI integration can be written inside the above funstion
+        
+        self.chat_input.value = enhanced_prompt
+        await self.handle_chat_input() # this will make a call to gpt and render the 2d again
+        await self.update_3d_scene() # this is start draping to 3d which call this same function again..
     
     def _sync_update_3d(self):
         """Update 3d model"""
@@ -874,6 +905,8 @@ class GUIState:
         # Put the new one for display
         self.garm_3d_filename = f'garm_3d_{self.pattern_state.id}_{time.time()}.glb'
         shutil.copy2(path / filename, self.local_path_3d / self.garm_3d_filename)
+        
+        self.loop.create_task(self.upgrade_prompt())
 
     # Design buttons updates
     async def design_sample(self):
