@@ -1,4 +1,3 @@
-
 """Callback functions & State info for Sewing Pattern Configurator """
 
 # NOTE: NiceGUI reference: https://nicegui.io/
