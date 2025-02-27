@@ -20,7 +20,7 @@ from nicegui import ui, app, events, background_tasks
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 
-# Custom
+# Customdede
 from .gui_pattern import GUIPattern
 from .pattern_parser import PatternParser
 
@@ -668,7 +668,6 @@ class GUIState:
         # https://github.com/zauberzeug/nicegui/wiki/FAQs#why-have-all-my-elements-the-same-value
    
         print('INFO::Updating pattern...')
-
         # Update the values
         if param_dict is not None:
             if body_param:
@@ -886,10 +885,11 @@ class GUIState:
         # all the 3 image will have the path now..         
         enhanced_prompt = prompt_enhancer(text, image_path, front_view_path, back_view_path) # new AI integration can be written inside the above funstion
         
-        self.chat_input.value = enhanced_prompt
-        await self.handle_chat_input() # this will make a call to gpt and render the 2d again
-        await self.update_3d_scene() # this is start draping to 3d which call this same function again..
-    
+        if enhanced_prompt is not None:
+            self.chat_input.value = enhanced_prompt
+            await self.handle_chat_input() # this will make a call to gpt and render the 2d again
+            await self.update_3d_scene() # this is start draping to 3d which call this same function again..
+
     def _sync_update_3d(self):
         """Update 3d model"""
 
