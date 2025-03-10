@@ -15,6 +15,7 @@ import logging
 from rich.logging import RichHandler
 from rich.console import Console
 
+
 load_dotenv()
 
 # Initialize the rich console and logger
@@ -131,30 +132,45 @@ class PatternParser:
             raise ValueError("Either text or image_file must be provided.")
 
         # logger.info("[bold yellow]Requesting model completion[/bold yellow]")
-        print(user_messages)
+        
 
         # Prepare the API request
         response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "assistant",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": user_messages
-                }
-            ],
-            response_format={
-                "type": "json_object"
-            }
-        )
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": system_prompt}
+        ] + [
+            {"role": "user", "content": user_messages }
+        ],
+        response_format={
+            "type": "json_object"
+        }
+    )
+
 
         # logger.info("[bold green]Model response received[/bold green]")
 
         # Extract the configuration dictionary from the response
-        # print(response)
         config_dict = json.loads(response.choices[0].message.content)
         # logger.debug(f"Generated config: {config_dict}")
+        print_data(config_dict)
         return config_dict
+        
+def print_data(data):
+    for key, value in data.items():
+        print(f"\n=== {key} ===")
+        print_params(value)
+
+def print_params(data, indent=""):
+    for key, value in data.items():
+        if isinstance(value, dict):
+            if 'v' in value and 'range' in value:
+                # Print simple parameters with their values
+                print(f"{indent}{key} = {value['v']}")
+            else:
+                # Print nested structure headers
+                print(f"{indent}{key}:")
+                print_params(value, indent + "  ")
+        else:
+            print(f"{indent}{key} = {value}")
+            # Print non-dictionary values directly
