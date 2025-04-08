@@ -225,6 +225,7 @@ Identify the Relevant Garment Component(s):
 
 Determine which garment component(s) the input refers to (e.g., sleeves, collar, waistband) and return only the corresponding section.
 Ensure that every output contains the meta section if an upper garment is requested.
+if the meta[x]['v'] is none, then remove the x data from meta
 If multiple garments are requested (e.g., a full outfit), return all corresponding sections while maintaining full structural integrity.
 2. Preserve Hierarchical Structure
 Maintain the exact hierarchical structure of the configuration dictionary.

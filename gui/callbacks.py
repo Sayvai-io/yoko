@@ -11,7 +11,9 @@ import shutil
 from pathlib import Path
 import time
 import base64
-
+from pprint import pprint 
+from collections import OrderedDict
+import pprint as pp_module
 from .mmua import prompt_enhancer
 
 from nicegui import ui, app, events, background_tasks
@@ -64,6 +66,7 @@ class GUIState:
         self.content_type = None
         self.image_bytes = None
         self.last_chat_input = None
+        self.temp_session_id= None
         # Pattern
         self.pattern_state = GUIPattern()
 
@@ -609,13 +612,13 @@ class GUIState:
     async def handle_image_upload(self, e: events.UploadEventArguments):
         """Handle uploaded reference images"""
         try:
-            # Convert SpooledTemporaryFile to bytes and create data URL
+            # Read content once and store it
             self.image_bytes = e.content.read()
             self.content_type = e.type or 'image/png'  # fallback to png if type not provided
-            image_bytes = e.content.read()
-            content_type = e.type or 'image/png'  # fallback to png if type not provided
-            data_url = f'data:{content_type};base64,{base64.b64encode(image_bytes).decode()}'
             
+            # Create data URL using the stored bytes
+            data_url = f'data:{self.content_type};base64,{base64.b64encode(self.image_bytes).decode()}'
+            self.data_url = data_url
             # Add user message with image
             with self.chat_container:
                 with ui.card().classes('w-3/4 ml-auto bg-gray-200 rounded-lg'):
@@ -630,7 +633,7 @@ class GUIState:
             loop = asyncio.get_event_loop()
             params = await loop.run_in_executor(
                 self._async_executor,
-                lambda: self.pattern_parser.process_input(image_data=(image_bytes, content_type))
+                lambda: self.pattern_parser.process_input(image_data=(self.image_bytes, self.content_type))
             )
             
             # Update design parameters
@@ -666,7 +669,7 @@ class GUIState:
         """UI was updated -- update the state of the pattern parameters and visuals"""
         # NOTE: Fixing to the "same value" issue in lambdas 
         # https://github.com/zauberzeug/nicegui/wiki/FAQs#why-have-all-my-elements-the-same-value
-   
+        
         print('INFO::Updating pattern...')
         # Update the values
         if param_dict is not None:
@@ -674,8 +677,8 @@ class GUIState:
                 param_dict[param] = new_value
             else:
                 param_dict[param]['v'] = new_value
-                self.pattern_state.is_in_3D = False   # Design param changes -> 3D model is not synced with the param
- 
+                self.pattern_state.is_in_3D = False 
+                  # Design param changes -> 3D model is not synced with the param
         try:
             if not self.pattern_state.is_slow_design(): 
                 # Quick update
@@ -875,8 +878,10 @@ class GUIState:
             image_path = None
             
         text = self.last_chat_input
-        front_view_path = f"{self.local_path_3d}/Configured_design_3D_render_front.png",
-        back_view_path = f"{self.local_path_3d}/Configured_design_3D_render_back.png",
+
+
+        front_view_path = f"tmp_gui\downloads\{str(self.pattern_state.id)}\Configured_design_3D\Configured_design_3D_render_front.png"
+        back_view_path = f"tmp_gui\downloads\{str(self.pattern_state.id)}\Configured_design_3D\Configured_design_3D_render_back.png"
         
         print("\n\nThe text prompt data\n " , text)
         print("\n\nThe image prompt image path\n " , image_path)
@@ -895,7 +900,8 @@ class GUIState:
 
         # Run simulation
         path, filename = self.pattern_state.drape_3d()
-
+        
+    
         # NOTE: The files will be available publically at the static point
         # However, we cannot do much about it, since it won't be available for the interface otherwise
         

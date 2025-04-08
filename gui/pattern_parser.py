@@ -27,6 +27,7 @@ load_dotenv()
 
 class PatternParser:
     def __init__(self):
+        self.memory=[]
         # Initialize any LLM/vision model clients here
         # logger.info("[bold green]PatternParser initialized[/bold green]")
         pass
@@ -85,21 +86,14 @@ class PatternParser:
 
         # logger.info(f"[bold cyan]Image input saved[/bold cyan] to {save_dir / f'input_{timestamp}.{ext}'}")
 
-    def _generate_dummy_params(self, text: Optional[str] = None,
-                               image_data: bytes = None) -> Dict:
-        # Ensure you have the necessary client setup for OpenAI
+    def _generate_dummy_params(self, text: Optional[str] = None,image_data: bytes = None) -> Dict:
+        
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-        # logger.info("[bold yellow]Generating parameters using provided inputs[/bold yellow]")
-        # logger.debug(f"Text: {text}")
-        # logger.debug(f"Image data: {image_data}")
-
-        # Function to encode the image
         def encode_image(image_data: bytes) -> str:
-            # logger.info(f"[bold green]Encoding image data {image_data}[/bold green]")
             return base64.b64encode(image_data[0]).decode("utf-8")
 
-        user_messages = []
+        user_messages = self.memory.copy()  # Include past conversations for context
 
         user_messages.append({
             "type": "text",
@@ -108,52 +102,45 @@ class PatternParser:
                     f" and default_prob values:"
         })
 
-        # Add text content if provided
-        # text =  "From the provided image and template, please generate a parameter configuration for the garment."
         if text:
             user_messages.append({"type": "text", "text": text})
+            self.memory.append({"type": "text", "text": text})  # Save message to self.memory
         else:
-            text =  "From the provided image and template, please generate a parameter configuration for the garment."
-            user_messages.append({"type": "text", "text": text})
+            default_text = "From the provided image and template, please generate a parameter configuration for the garment."
+            user_messages.append({"type": "text", "text": default_text})
+            self.memory.append({"type": "text", "text": default_text})
 
-
-        # Add image content if provided
         if image_data:
             base64_image = encode_image(image_data)
-            # logger.info(f"[bold green]Image encoded and the type {type(image_data)} {image_data} [/bold green]")
             user_messages.append(
                 {
                     "type": "image_url",
                     "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
                 }
             )
+            self.memory.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+            })
 
         if not user_messages:
             raise ValueError("Either text or image_file must be provided.")
 
-        # logger.info("[bold yellow]Requesting model completion[/bold yellow]")
-        
-
-        # Prepare the API request
         response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": system_prompt}
-        ] + [
-            {"role": "user", "content": user_messages }
-        ],
-        response_format={
-            "type": "json_object"
-        }
-    )
+            model="gpt-4o",
+            messages=[{"role": "system", "content": system_prompt}] + [
+                {"role": "user", "content": user_messages}
+            ],
+            response_format={"type": "json_object"}
+        )
 
-
-        # logger.info("[bold green]Model response received[/bold green]")
-
-        # Extract the configuration dictionary from the response
         config_dict = json.loads(response.choices[0].message.content)
-        # logger.debug(f"Generated config: {config_dict}")
         print_data(config_dict)
+
+        # Manage self.memory size to prevent excessive buildup
+        if len(self.memory) > 20:
+            self.memory = self.memory[-20:] 
+
         return config_dict
         
 def print_data(data):
