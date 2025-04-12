@@ -245,6 +245,7 @@ Ensure that the generated configuration dynamically adapts to any body type, adj
 Ensure proportionally correct values for width, length, and flare to maintain garment realism.
 7. Response Behavior
 If a single garment (e.g., "shirt") is requested, return only its corresponding section along with the necessary meta structure.
+If there is change from the upper portion of the garment, then the lower portion of the garment should stay the same and the change should be only in the upper portion.
 If multiple garments (e.g., "shirt , sleeves, skirt and pant") are requested, return only those sections while maintaining full structural integrity.
 If a specific component (e.g., "sleeves") is requested, return only the relevant sub-section of that garment.
 Always include the meta sections where applicable to avoid incomplete configurations.

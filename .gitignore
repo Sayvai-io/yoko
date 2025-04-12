@@ -11,7 +11,10 @@ __pycache__
 
 # Data folder for inputs
 data/
-
+NvidiaWarp-GarmentCode
+Configured_design/
+Configured_design_3D/
+env
 #Environment file
 .env
 
