@@ -605,6 +605,9 @@ class GUIState:
         finally:
             # Always close the spinner dialog
             self.spin_dialog.close()
+            self.loop = asyncio.get_event_loop()
+            await self.loop.run_in_executor(self._async_executor, self._sync_update_3d)
+            # Clear input
             # Clear input
             self.last_chat_input = self.chat_input.value
             self.chat_input.value = ''
@@ -880,8 +883,8 @@ class GUIState:
         text = self.last_chat_input
 
 
-        front_view_path = f"tmp_gui\downloads\{str(self.pattern_state.id)}\Configured_design_3D\Configured_design_3D_render_front.png"
-        back_view_path = f"tmp_gui\downloads\{str(self.pattern_state.id)}\Configured_design_3D\Configured_design_3D_render_back.png"
+        front_view_path = "tmp_gui/downloads/"+str(self.pattern_state.id) + "/Configured_design_3D/Configured_design_3D_render_front.png"
+        back_view_path = "tmp_gui/downloads/"+str(self.pattern_state.id)+"/Configured_design_3D/Configured_design_3D_render_back.png"
         
         print("\n\nThe text prompt data\n " , text)
         print("\n\nThe image prompt image path\n " , image_path)
