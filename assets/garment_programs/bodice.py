@@ -440,10 +440,20 @@ class Shirt(pyg.Component):
             design['left'] if design['left']['enable_asym']['v'] else design, 
             fitted=fitted).mirror()
 
-        self.stitching_rules.append((self.right.interfaces['front_in'],
-                                     self.left.interfaces['front_in']))
+        is_open_front = design['shirt'].get('openfront', {}).get('v', False)
+        print(f"Creating {'open' if is_open_front else 'closed'} front shirt")
+
+        if ('openfront' not in design['shirt']) or (not design['shirt']['openfront']['v']):
+            self.stitching_rules.append((self.right.interfaces['front_in'],
+                                        self.left.interfaces['front_in']))
+        else:
+            # Label the front edges as open
+            self.right.ftorso.interfaces['inside'].edges.propagate_label('open_front')
+            self.left.ftorso.interfaces['inside'].edges.propagate_label('open_front')
+            print("Front edges labeled as open_front")
+
         self.stitching_rules.append((self.right.interfaces['back_in'],
-                                     self.left.interfaces['back_in']))
+                                    self.left.interfaces['back_in']))
 
         # Adjust interface ordering for correct connectivity
         self.interfaces = {   # Bottom connection
