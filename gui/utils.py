@@ -13,7 +13,8 @@ template = """
         'strapless': {'v': False, 'range': [True, False], 'type': 'bool', 'default_prob': 0.8},
         'length': {'v': 1.2, 'range': [0.5, 3.5], 'type': 'float', 'default_prob': 0.7},
         'width': {'v': 1.05, 'range': [1.0, 1.3], 'type': 'float', 'default_prob': 0.4},
-        'flare': {'v': 1.0, 'range': [0.7, 1.6], 'type': 'float', 'default_prob': 0.4}
+        'flare': {'v': 1.0, 'range': [0.7, 1.6], 'type': 'float', 'default_prob': 0.4},
+        'openfront': {'v': True, 'range': [True, False], 'type': 'bool', 'default_prob': 0.8}
     },
     'collar': {
         'f_collar': {'v': 'CircleNeckHalf', 'range': ['CircleNeckHalf', 'CurvyNeckHalf', 'VNeckHalf', 'SquareNeckHalf', 'TrapezoidNeckHalf', 'CircleArcNeckHalf', 'Bezier2NeckHalf'], 'type': 'select', 'default_prob': 0.4},
@@ -221,56 +222,54 @@ respose_formet = """{
 system_prompt = f"""
 Generate responses based on the specific clothing parameters requested in the input while ensuring the following constraints:
 
-Identify the Relevant Garment Component(s):
+1. Identify the Relevant Garment Component(s):
+- Determine which garment component(s) the input refers to (e.g., sleeves, collar, waistband)
+- Ensure that every output contains the meta section if an upper garment is requested
+- If the meta[x]['v'] is none, then remove the x data from meta
+- For openfront shirts, ensure both meta['upper']['v'] = 'FittedShirt' and shirt['openfront']['v'] = True are set
+- If multiple garments are requested (e.g., a full outfit), return all corresponding sections
 
-Determine which garment component(s) the input refers to (e.g., sleeves, collar, waistband) and return only the corresponding section.
-Ensure that every output contains the meta section if an upper garment is requested.
-if the meta[x]['v'] is none, then remove the x data from meta
-If multiple garments are requested (e.g., a full outfit), return all corresponding sections while maintaining full structural integrity.
-2. Preserve Hierarchical Structure
-Maintain the exact hierarchical structure of the configuration dictionary.
-Do not introduce new keys or remove existing structural elements.
-Ensure all parent-child relationships are kept intact.
-3. Modify Only 'v' (Value) Fields
-Modify only the v fields based on input while keeping the structure intact.
-Ensure v values are dynamically adjusted based on user input and predefined constraints.
-4. Adhere to Specified Ranges
-Ensure all modifications strictly follow the predefined 'range' constraints for each parameter.
-If an input is out of range, adjust it to fit within valid constraints.
-5. Maintain Nested Configurations
-Preserve all parent-child relationships in the response.
-Ensure dependencies (such as symmetry settings) remain valid across the entire structure.
-6. Adaptive to Body Types
-Ensure that the generated configuration dynamically adapts to any body type, adjusting values accordingly without violating constraints.
-Ensure proportionally correct values for width, length, and flare to maintain garment realism.
-7. Response Behavior
-if there is change from the upper portion of the garment, then the lower portion of the garment should stay the same and the change should be only in the upper portion.
-If a single garment (e.g., "shirt") is requested, return only its corresponding section along with the necessary meta structure.
-If multiple garments (e.g., "shirt , sleeves, skirt and pant") are requested, return only those sections while maintaining full structural integrity.
-If a specific component (e.g., "sleeves") is requested, return only the relevant sub-section of that garment.
-Always include the meta sections where applicable to avoid incomplete configurations.
-8. Ensure Garment is Always Recognized in Output
-Prevent cases where garments appear "empty" or are skipped.
-If asymmetry settings are relevant, .
-9. Update Mechanisms Without Skipping Data
-If an update occurs, ensure the garment remains valid before proceeding with additional modifications (e.g., pattern or 3D updates).
-Avoid skipping critical updates that might result in an empty or unrecognized garment.
-10. Structural Integrity & Technical Constraints
-Respect minimum/maximum value ranges for physical feasibility.
-Consider construction requirements when selecting parameters.
-Maintain proper proportions across all measurements.
-11. Image Analysis & Logical Consistency
-Identify key garment features and silhouettes.
-Estimate proportions and measurements dynamically.
-Detect style elements and special features based on garment type.
-Verify compatible feature combinations to prevent conflicts.
-Ensure practical constructability of the generated configuration.
-12. Output Requirements
-Generate only the modified configuration dictionary.
-Ensure a valid JSON format in every response.
-Include all required nested structures (such as meta ).
-Maintain correct value types (float, bool, select_null).
-No additional text or explanations—output only the configuration data.
+2. Preserve Hierarchical Structure:
+- Maintain the exact hierarchical structure of the configuration dictionary
+- Do not introduce new keys or remove existing structural elements
+- Ensure all parent-child relationships are kept intact
+
+3. Modify Only 'v' (Value) Fields:
+- Modify only the v fields based on input while keeping the structure intact
+- Ensure v values are dynamically adjusted based on user input and predefined constraints
+- For openfront designs, always set shirt.openfront.v = True
+
+4. Adhere to Specified Ranges:
+- Ensure all modifications strictly follow the predefined 'range' constraints for each parameter
+- If an input is out of range, adjust it to fit within valid constraints
+
+5. Maintain Nested Configurations:
+- Preserve all parent-child relationships in the response
+- Ensure dependencies (such as symmetry settings) remain valid across the entire structure
+
+6. Adaptive to Body Types:
+- Ensure that the generated configuration dynamically adapts to any body type
+- Adjust values accordingly without violating constraints
+- Ensure proportionally correct values for width, length, and flare
+
+7. Response Behavior:
+- For upper garments, always include the meta section
+- For openfront designs, ensure both meta and shirt sections are included with correct values
+- If there is change from the upper portion of the garment, then the lower portion should stay the same
+- If a single garment (e.g., "shirt") is requested, return only its corresponding section with meta
+- If multiple garments are requested, return only those sections while maintaining structure
+
+8. Special Parameter Handling:
+- For openfront shirts: Always set shirt.openfront.v = True and meta.upper.v = 'FittedShirt'
+- For strapless designs: Ensure shirt.strapless.v is properly set
+- For asymmetric designs: Handle left/right configurations appropriately
+
+9. Output Requirements:
+- Generate only the modified configuration dictionary
+- Ensure a valid JSON format in every response
+- Include all required nested structures
+- Maintain correct value types (float, bool, select_null)
+- No additional text or explanations—output only the configuration data
 
 RESPONSE FORMAT:
 {respose_formet}
