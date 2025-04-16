@@ -605,8 +605,6 @@ class GUIState:
         finally:
             # Always close the spinner dialog
             self.spin_dialog.close()
-            self.loop = asyncio.get_event_loop()
-            await self.loop.run_in_executor(self._async_executor, self._sync_update_3d)
             # Clear input
             # Clear input
             self.last_chat_input = self.chat_input.value
