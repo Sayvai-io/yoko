@@ -46,6 +46,13 @@ design:
       type: float
       default_prob: 0.5
   shirt:
+    openfront:
+      v: true
+      range:
+      - true
+      - false
+      type: bool
+      default_prob: 0.8
     strapless:
       v: false
       range:
