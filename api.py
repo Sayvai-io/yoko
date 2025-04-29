@@ -29,7 +29,6 @@ DXF_DIR = Path("dxffiles")
 DXF_DIR.mkdir(exist_ok=True)
 
 def load_default_yaml(file_path: str) -> dict:
-    """Load YAML content from a file into a Python dictionary."""
     try:
         with open(file_path, 'r') as f:
             return yaml.safe_load(f)
@@ -38,10 +37,6 @@ def load_default_yaml(file_path: str) -> dict:
         raise Exception(f"Failed to load default.yaml: {str(e)}")
 
 def merge_dicts(default_dict: dict, config_dict: dict) -> dict:
-    """
-    Recursively merge config_dict into default_dict, preserving default_dict structure
-    and updating values from config_dict where applicable.
-    """
     merged = default_dict.copy()
     
     for key, value in config_dict.items():
@@ -62,17 +57,6 @@ async def generate_pattern(
     text: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None)
 ):
-    """
-    Endpoint to generate pattern parameters from text and/or image input, process them into a garment pattern,
-    and return a unique file ID for downloading the generated DXF file.
-
-    Args:
-        text: Optional text description of the desired garment
-        image: Optional image file upload
-
-    Returns:
-        dict: A dictionary containing the file ID for the generated DXF file
-    """
     try:
         # Process input to get config_dict
         image_data = None
@@ -106,12 +90,6 @@ async def generate_pattern(
         )
 
 def delete_file(file_path: Path):
-    """
-    Delete the specified file and log the result.
-    
-    Args:
-        file_path (Path): Path to the file to delete.
-    """
     try:
         file_path.unlink()  # Delete the file
         logger.info(f"Deleted file: {file_path}")
@@ -120,16 +98,6 @@ def delete_file(file_path: Path):
 
 @app.get("/fileserver/{file_id}")
 async def fileserver(file_id: str, background_tasks: BackgroundTasks):
-    """
-    Serves the DXF file for download and schedules its deletion after serving.
-
-    Args:
-        file_id (str): The unique ID of the DXF file to serve.
-        background_tasks (BackgroundTasks): FastAPI background tasks for post-response cleanup.
-
-    Returns:
-        FileResponse: The DXF file as an attachment.
-    """
     # Construct the full path to the file
     file_path = DXF_DIR / f"{file_id}.dxf"
 
