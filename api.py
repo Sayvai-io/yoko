@@ -106,7 +106,7 @@ async def fileserver(file_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=404, detail="File not found")
 
     # Schedule file deletion as a background task
-    background_tasks.add_task(delete_file, file_path)
+    # background_tasks.add_task(delete_file, file_path)
 
     # Serve the file
     return FileResponse(
