@@ -83,7 +83,12 @@ class VisPattern(core.ParametrizedPattern):
 
         if with_dxf:
             dxf_file = os.path.join(log_dir, (self.name + tag + '_pattern.dxf'))
-            self.convert_svg_to_dxf(svg_printable_file, dxf_file) 
+            self.convert_svg_to_dxf(svg_file, dxf_file) 
+            
+            # Generate DXF for print pattern if printable is enabled
+            if with_printable:
+                print_dxf_file = os.path.join(log_dir, (self.name + tag + '_print_pattern.dxf'))
+                self.convert_svg_to_dxf(svg_printable_file, print_dxf_file)
 
         return log_dir
 
@@ -453,6 +458,7 @@ class VisPattern(core.ParametrizedPattern):
             return filtered
 
         # Load SVG and extract paths
+        print("svg_file",svg_file)
         paths, attributes = svg2paths(svg_file)
 
         # Create a new DXF document
