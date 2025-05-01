@@ -6,6 +6,7 @@ import random
 import string
 import os
 import numpy as np
+import ezdxf
 from scipy.spatial.transform import Rotation as R
 
 # Correct dependencies on Win
@@ -17,8 +18,13 @@ if 'Windows' in os.environ.get('OS',''):
 import cairosvg
 import svgpathtools as svgpath
 import svgwrite as sw
-
+import re
+from svgpathtools import Line
 import matplotlib.pyplot as plt
+import ezdxf
+from svgpathtools import svg2paths
+import math
+import xml.etree.ElementTree as ET
 
 # my
 from pygarment import data_config
@@ -50,14 +56,11 @@ class VisPattern(core.ParametrizedPattern):
 
         self.px_per_unit = 3
 
-    def serialize(
-            self, path, to_subfolder=True, tag='', 
-            with_3d=True, with_text=True, view_ids=True, 
-            with_printable=False,
-            empty_ok=False):
-
+    def serialize(self, path, to_subfolder=True, tag='', with_3d=True, with_text=True, view_ids=True, with_printable=False, with_dxf=True,  empty_ok=False):
+        
         log_dir = super().serialize(path, to_subfolder, tag=tag, empty_ok=empty_ok)
-        if len(self.panel_order()) == 0:  # If we are still here, but pattern is empty, don't generate an image
+    
+        if len(self.panel_order()) == 0:  # If pattern is empty, don't generate an image
             return log_dir
 
         if tag:
@@ -68,12 +71,24 @@ class VisPattern(core.ParametrizedPattern):
         pdf_file = os.path.join(log_dir, (self.name + tag + '_print_pattern.pdf')) 
         png_3d_file = os.path.join(log_dir, (self.name + tag + '_3d_pattern.png'))
 
-        # save visualtisation
+        # Save visualization (SVG, PNG, etc.)
         self._save_as_image(svg_file, png_file, with_text, view_ids)
+        
         if with_3d:
             self._save_as_image_3D(png_3d_file)
+        
         if with_printable:
             self._save_as_pdf(svg_printable_file, pdf_file, with_text, view_ids)
+
+
+        if with_dxf:
+            dxf_file = os.path.join(log_dir, (self.name + tag + '_pattern.dxf'))
+            self.convert_svg_to_dxf(svg_file, dxf_file) 
+            
+            # Generate DXF for print pattern if printable is enabled
+            if with_printable:
+                print_dxf_file = os.path.join(log_dir, (self.name + tag + '_print_pattern.dxf'))
+                self.convert_svg_to_dxf(svg_printable_file, print_dxf_file)
 
         return log_dir
 
@@ -279,7 +294,7 @@ class VisPattern(core.ParametrizedPattern):
                         dwg, panel, paths[i], with_text, view_ids)
         
         return dwg
-
+    
     def _save_as_image(
             self, svg_filename, png_filename,
             with_text=True, view_ids=True, 
@@ -300,7 +315,6 @@ class VisPattern(core.ParametrizedPattern):
             flat=False,
             margin=margin
         )
-        
         dwg.save(pretty=True)
 
         # to png
@@ -356,6 +370,7 @@ class VisPattern(core.ParametrizedPattern):
             fill_panels=False,
             margin=margin
         )
+
         dwg.save(pretty=True)
 
         # to pdf
@@ -364,6 +379,120 @@ class VisPattern(core.ParametrizedPattern):
         # DPI = 96 (default) px/inch == 96/2.54 px/cm
         cairosvg.svg2pdf(
             url=svg_filename, write_to=pdf_filename, dpi=2.54*self.px_per_unit)
+
+    def convert_svg_to_dxf(self,svg_file: str, dxf_file: str, scale: float = 1.0, flip_y: bool = True, precision: float = 0.001, segments: int = 200):
+        scale = 1.0
+        if not isinstance(svg_file, str):
+            raise ValueError(f"Expected string for 'svg_file', but got {type(svg_file)}") 
+        def transform_point(x, y, svg_width, svg_height, scale, flip_y, view_box):
+            """Transform SVG coordinates to DXF coordinates."""
+            
+            # Ensure scale is a float, if it's not already
+            scale = float(scale)
+
+            if view_box:
+                x = (x - view_box[0]) * (svg_width / view_box[2])
+                y = (y - view_box[1]) * (svg_height / view_box[3])
+
+            x *= scale
+            y *= scale
+
+            if flip_y:
+                y = svg_height * scale - y
+
+            return (x, y)
+
+
+        def add_line(msp, start: complex, end: complex, transform_fn) -> None:
+            """Add a line to the DXF modelspace."""
+            start_x, start_y = transform_fn(start.real, start.imag)
+            end_x, end_y = transform_fn(end.real, end.imag)
+            msp.add_line((start_x, start_y), (end_x, end_y))
+
+        def add_approximated_curve(msp, curve, transform_fn, segments: int) -> None:
+            """Add an approximated curve using line segments."""
+            points = []
+            for i in range(segments + 1):
+                t = i / segments
+                point = curve.point(t)
+                x, y = transform_fn(point.real, point.imag)
+                points.append((x, y))
+
+            # Filter points to remove duplicates
+            filtered_points = _filter_points(points)
+
+            if len(filtered_points) >= 2:
+                msp.add_lwpolyline(filtered_points)
+
+        def _filter_points(points: list) -> list:
+            """Filter points to remove duplicates while maintaining curve shape."""
+            if len(points) < 2:
+                return points
+
+            filtered = [points[0]]
+
+            for i in range(1, len(points) - 1):
+                prev = filtered[-1]
+                curr = points[i]
+                next_pt = points[i + 1]
+
+                # Calculate vectors
+                v1 = (curr[0] - prev[0], curr[1] - prev[1])
+                v2 = (next_pt[0] - curr[0], next_pt[1] - curr[1])
+
+                # Calculate angle between vectors
+                dot_product = v1[0] * v2[0] + v1[1] * v2[1]
+                mag1 = math.sqrt(v1[0] * v1[0] + v1[1] * v1[1])
+                mag2 = math.sqrt(v2[0] * v2[0] + v2[1] * v2[1])
+
+                if mag1 > precision and mag2 > precision:
+                    cos_angle = dot_product / (mag1 * mag2)
+                    cos_angle = max(-1, min(1, cos_angle))  # Clamp to [-1, 1]
+                    angle = math.acos(cos_angle)
+
+                    # Keep point if angle is significant or distance is large
+                    if angle > 0.1 or mag1 > precision * 10:
+                        filtered.append(curr)
+
+            filtered.append(points[-1])  # Always include last point
+            return filtered
+
+        # Load SVG and extract paths
+        print("svg_file",svg_file)
+        paths, attributes = svg2paths(svg_file)
+
+        # Create a new DXF document
+        doc = ezdxf.new()
+        msp = doc.modelspace()
+
+        tree = ET.parse(svg_file)
+        root = tree.getroot()
+
+        # Helper function to remove units (e.g., px, cm, mm)
+        def clean_svg_unit(value: str) -> float:
+            return float(re.sub(r'[a-zA-Z]+', '', value))
+
+        # Get width and height from SVG metadata (unit-agnostic)
+        svg_width = clean_svg_unit(root.get('width', '0'))
+        svg_height = clean_svg_unit(root.get('height', '0'))
+
+        # Extract viewBox information
+        view_box = None
+        viewBox = root.get('viewBox')
+        if viewBox:
+            view_box = list(map(float, viewBox.split()))
+
+        # Add paths to DXF modelspace
+        for path in paths:
+            for segment in path:
+                if isinstance(segment, Line):
+                    add_line(msp, segment.start, segment.end, lambda x, y: transform_point(x, y, svg_width, svg_height, scale, flip_y, view_box))
+                else:
+                    add_approximated_curve(msp, segment, lambda x, y: transform_point(x, y, svg_width, svg_height, scale, flip_y, view_box), segments)
+
+        # Save the DXF document
+        print(f"Saving DXF file to: {dxf_file}")
+        doc.saveas(dxf_file)
 
 class RandomPattern(VisPattern):
     """
