@@ -7,7 +7,6 @@ from db.services import UserService, MessageService
 from db.db_config import Base, engine, get_db
 from gui.callbacks import GUIState
 import os
-import uuid
 
 icon_image_b64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAACXBIWXMAAAsSAAALEgHS3X78AAAWd0lEQVR4nO2dfYxc1XnGz+587+x49tO7ttf2GK/tpTZ4mlwawF9rbPMRzIeAEGTTUgpSCzSp1EopSImEaNVUVUWTqFFVCQilIk2bokYptKEJASJopXaimoAEIaYYB7telvXudnZ2d762qsd7R6x3Z9c765lz3rnn+Un+gz/Y+5477/vcc9773HOaSqWSIoTYSTN/d0LshQJAiMVQAAixGAoAIRZDASDEYigAhFgMBYAQi6EAEGIxFABCLIYCQIjFUAAIsRgKACEWQwEgxGIoAIRYDAWAEIuhABBiMRQAQiyGAkCIxVAACLEYCgAhFkMBIMRiKACEWAwFgBCLoQAQYjEUAEJsRSn1/wo3KFPhDTaqAAAAAElFTkSuQmCC'
 
@@ -24,14 +23,14 @@ TOKEN_EXPIRY_DAYS = 30
 db = next(get_db())
 user_service = UserService(db)
 
-if not user_service.get_user_by_email("admin@yokostyles.com"):
-    user_service.create_user(email="admin@yokostyles.com", password="admin123")
+if not user_service.find_user_by_email("admin@yokostyles.com"):
+    user_service.add_user(email="admin@yokostyles.com", password="admin123")
 
-def create_jwt_token(uuid: str) -> str:
+def create_jwt_token(user_uid: str) -> str:
     """Generate JWT token with user ID payload"""
     expiry = datetime.utcnow() + timedelta(days=TOKEN_EXPIRY_DAYS)
     payload = {
-        "uuid": uuid,
+        "user_uid": user_uid,
         "exp": expiry.timestamp()
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
@@ -64,8 +63,8 @@ async def main_page(client: Client):
         return
 
     # Get user from database
-    uuid = decoded["uuid"]
-    user = user_service.get_user_by_uuid(uuid)
+    user_uid = decoded["user_uid"]
+    user = user_service.find_user_by_uid(user_uid)
     if not user:
         app.storage.user['jwt_token'] = None
         ui.navigate.to('/login')
@@ -93,12 +92,12 @@ def login_page():
         password = password_input.value
 
 
-        user = user_service.get_user_by_email(email)
+        user = user_service.find_user_by_email(email)
         if not user or user.password != password:
             ui.notify("Invalid credentials", color='negative')
             return
 
-        token = create_jwt_token(user.uuid)
+        token = create_jwt_token(user.user_uid)
         app.storage.user['jwt_token'] = token
 
         ui.notify("Login successful!", color='positive')
@@ -126,14 +125,14 @@ def login_page():
         conf_password = conf_password_input.value
 
 
-        user = user_service.get_user_by_email(email)
+        user = user_service.find_user_by_email(email)
         if user:
             ui.notify("Email already exists", color='negative')
             return
         if password!=conf_password:
             ui.notify("Passwords do not match", color='negative')
             return
-        user_service.create_user(email=email, password=password)
+        user_service.add_user(email=email, password=password)
         ui.notify("Signup successful!", color='positive')
         ui.navigate.to('/login')
 

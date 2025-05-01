@@ -4,7 +4,7 @@
 
 import yaml
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 from argparse import Namespace
 import numpy as np
 import shutil
@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 # Async execution of regular functions
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
+import uuid
 
 # Customdede
 from .gui_pattern import GUIPattern
@@ -64,6 +65,7 @@ class GUIState:
         self.user = user
         self.chat_service = ChatService(db, user_id=user.id)
         self.message_service = MessageService(db, user_id=user.id)
+        self.chat_uid = str(uuid.uuid4())
         self.window = None
         self.content_type = None
         self.image_bytes = None
@@ -143,17 +145,6 @@ class GUIState:
         # TODOLOW One dialog for both?
         self.def_design_file_dialog()
         self.def_body_file_dialog()
-        # with ui.row().classes('absolute top-0 left-0 h-full'):
-        #     # Sidebar (Initially hidden, toggle visibility when arrow is clicked)
-        #     # with ui.column().classes('sidebar bg-gray-200 p-4').style('width: 250px; display: none;' if not app.storage.gui['sidebar_visible'] else 'width: 250px; display: block;'):
-        #     with ui.column().classes('sidebar bg-gray-200 p-4').style('width: 250px; display: none; width: 250px; display: block;'):
-        #         ui.label("Chats")
-        #         chats = self.chat_service.get_user_chats()
-        #         for chat in chats:
-        #             ui.button(f"{chat['title']} - {chat['created_at']}", on_click=lambda chat_uuid=chat['uuid']: ui.open(f'/chat/{chat_uuid}')).classes('w-full mb-2')
-
-        #     # Arrow button to toggle sidebar
-        #     ui.icon(name='chevron-left', size='32px').classes('absolute top-1/2 left-0 transform -translate-y-1/2 cursor-pointer')
         # Configurator GUI
         with ui.element('div').classes('w-full'):
             with ui.row(wrap=False).classes(f'w-full h-[{self.h_params_content}dvh] p-0 m-0 '):
@@ -167,6 +158,7 @@ class GUIState:
             # NOTE: https://nicegui.io/documentation/section_pages_routing#page_layout
         with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] items-center bg-gradient-to-br from-blue-100 to-indigo-100  justify-end py-0 px-4 m-0'):
             ui.label('Yokostyles - GarmentCode design configurator').classes('mr-auto text-black').style('font-size: 150%; font-weight: 400')
+            ui.label(f"User - {self.user.email}").classes('ml-auto text-black').style('font-size: 120%; font-weight: 400')
 
         # NOTE No ui.left_drawer(), no ui.right_drawer()
         with ui.footer(fixed=False, elevated=True).classes('items-center bg-gradient-to-br from-blue-100 to-indigo-100 justify-center p-0 m-0'):
@@ -197,10 +189,13 @@ class GUIState:
         """Layout of tabs with parameters"""
         with ui.column(wrap=False).classes(f'h-[{self.h_params_content}vh]'):
             with ui.tabs() as tabs:
+                self.ui_chat_history = ui.tab('Chat History')    # Moved to first position
                 self.ui_parse_tab = ui.tab('Parse Design')    # Moved to first position
                 self.ui_design_tab = ui.tab('Design parameters')
                 self.ui_body_tab = ui.tab('Body parameters')
             with ui.tab_panels(tabs, value=self.ui_parse_tab, animated=True).classes('w-full h-full items-center'):  # Changed default value to parse tab
+                with ui.tab_panel(self.ui_chat_history).classes('w-full h-full items-center p-0 m-0'):
+                    self.def_chat_history()
                 with ui.tab_panel(self.ui_parse_tab).classes('w-full h-full items-center p-0 m-0'):
                     self.def_parse_tab()
                 with ui.tab_panel(self.ui_design_tab).classes('w-full h-full items-center p-0 m-0'):
@@ -513,6 +508,56 @@ class GUIState:
 
             ui.button('Close without upload', on_click=self.ui_design_dialog.close)
 
+    def def_chat_history(self):
+        def open_chat(chat_uid):
+            self.chat_uid = chat_uid
+            #need to refresh page with this chat
+
+        chat_history = self.chat_service.get_user_chats()
+        def format_time(dt):
+            today = datetime.now().date()
+            yesterday = today - timedelta(days=1)
+            chat_date = dt.date()
+
+            if chat_date == today:
+                return "Today"
+            elif chat_date == yesterday:
+                return "Yesterday"
+            return dt.strftime("%b %d")
+        with ui.row().classes("w-full h-screen"):
+            # Sidebar
+            with ui.column().classes("w-64 h-full border-r bg-white shadow-sm"):
+                # Header
+                with ui.row().classes("w-full p-4 border-b items-center justify-between"):
+                    ui.label("Chat History").classes("text-lg font-semibold")
+                    with ui.button(icon="add", color=None).classes("text-gray-500 hover:bg-gray-100 rounded-full p-1"):
+                        ui.tooltip("New Chat")
+
+                # Search bar
+                with ui.row().classes("w-full p-2 border-b"):
+                    with ui.input(placeholder="Search chats").classes("w-full rounded-lg bg-gray-100 px-3 py-2 text-sm border-none"):
+                        ui.icon("search").classes("text-gray-400")
+
+                # Chat list
+                with ui.column().classes("w-full overflow-y-auto"):
+                    for chat in chat_history:
+                        with ui.row().classes(f"""
+                            w-full p-3 items-center cursor-pointer
+                            {"bg-blue-50" if self.chat_uid==chat.chat_uid else "hover:bg-gray-50"}
+                        """):
+                            with ui.column().classes("w-full"):
+                                ui.label(chat.title).classes("text-sm font-medium text-gray-900 truncate")
+                                ui.label(format_time(chat.created_at)).classes("text-xs text-gray-500")
+
+                # User section at bottom
+                with ui.row().classes("w-full p-3 border-t items-center gap-2 mt-auto"):
+                    ui.avatar("U", color="blue").classes("bg-blue-100 text-blue-600")
+                    ui.label("User Name").classes("text-sm font-medium text-gray-900")
+
+            # Main content area
+            with ui.column().classes("flex-1 h-full bg-white"):
+                ui.label("Main Chat Area").classes("text-xl font-semibold p-4")
+
     def def_parse_tab(self):
         """Define content for Parse Design tab"""
         # Main container without scroll
@@ -577,6 +622,7 @@ class GUIState:
                 self._async_executor,
                 lambda: self.pattern_parser.process_input(text=self.chat_input.value)
             )
+            print(params)
 
             # Update design parameters
             self.toggle_param_update_events(self.ui_design_refs)
@@ -585,6 +631,10 @@ class GUIState:
             await self.update_pattern_ui_state()
             self.toggle_param_update_events(self.ui_design_refs)
 
+            try:
+                self.message_service.add_message(chat_uid=self.chat_uid, message=self.chat_input.value, response=str(params))
+            except Exception as e:
+                print(e)
             # Add system message (left-aligned bubble)
             with self.chat_container:
                 with ui.row().classes('w-full justify-start'):

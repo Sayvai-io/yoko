@@ -1,14 +1,15 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from datetime import datetime
+import enum
 from db.db_config import Base
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    uuid = Column(String(36), unique=True, index=True, default=str(uuid.uuid4))
+    user_uid = Column(String(36), unique=True, index=True, default=str(uuid.uuid4()))
     email = Column(String(255), unique=True, index=True)
     password = Column(String(255))
     role = Column(String(50), default="user")
@@ -21,9 +22,13 @@ class Chat(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    uuid = Column(String(36), unique=True, index=True, default=str(uuid.uuid4))
+    chat_uid = Column(String(36), unique=True, index=True, default=str(uuid.uuid4()))
     title = Column(String(255), default="Untitled Chat")
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class MessageTypeEnum(str, enum.Enum):
+    TEXT = "text"
+    IMAGE = "image"
 
 class Message(Base):
     __tablename__ = "messages"
@@ -31,8 +36,9 @@ class Message(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     chat_id = Column(Integer, ForeignKey("chats.id"), index=True)
-    uuid = Column(String(36), unique=True, index=True, default=str(uuid.uuid4))
+    message_uid = Column(String(36), unique=True, index=True, default=str(uuid.uuid4()))
     message = Column(Text)
+    message_type = Column(Enum(MessageTypeEnum), default=MessageTypeEnum.TEXT)
     response = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -41,7 +47,7 @@ class Model(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    uuid = Column(String(36), unique=True, index=True, default=str(uuid.uuid4))
+    uid = Column(String(36), unique=True, index=True, default=str(uuid.uuid4()))
     title = Column(String(255))
     zip_file_link = Column(String(512))
     created_at = Column(DateTime, default=datetime.utcnow)
