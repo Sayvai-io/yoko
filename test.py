@@ -3,13 +3,12 @@ import jwt
 from datetime import datetime, timedelta
 from typing import Optional
 from db.models import User  # Import your models
-from db.services import UserService, MessageService
+from db.services import create_user, get_user_by_uuid, get_user_by_email
 from db.db_config import Base, engine, get_db
 from gui.callbacks import GUIState
-import os
-import uuid
 
 icon_image_b64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAACXBIWXMAAAsSAAALEgHS3X78AAAWd0lEQVR4nO2dfYxc1XnGz+587+x49tO7ttf2GK/tpTZ4mlwawF9rbPMRzIeAEGTTUgpSCzSp1EopSImEaNVUVUWTqFFVCQilIk2bokYptKEJASJopXaimoAEIaYYB7telvXudnZ2d762qsd7R6x3Z9c765lz3rnn+Un+gz/Y+5477/vcc9773HOaSqWSIoTYSTN/d0LshQJAiMVQAAixGAoAIRZDASDEYigAhFgMBYAQi6EAEGIxFABCLIYCQIjFUAAIsRgKACEWQwEgxGIoAIRYDAWAEIuhABBiMRQAQiyGAkCIxVAACLEYCgAhFkMBIMRiKACEWAwFgBCLoQAQYjEUAEJsRSn1/wo3KFPhDTaqAAAAAElFTkSuQmCC'
+
 
 # Initialize databasecall
 Base.metadata.create_all(bind=engine)
@@ -17,17 +16,15 @@ Base.metadata.create_all(bind=engine)
 # Remove the mock users list since we're using the database now
 
 # JWT Configuration (same as before)
-JWT_SECRET = os.getenv("JWT_SECRET_KEY")
+JWT_SECRET = "your-secret-key-123"
 JWT_ALGORITHM = "HS256"
 TOKEN_EXPIRY_DAYS = 30
 
 db = next(get_db())
-user_service = UserService(db)
+if not get_user_by_email(db, "admin@yokostyles.com"):
+    create_user(db, email="admin@yokostyles.com", password="admin123")
 
-if not user_service.get_user_by_email("admin@yokostyles.com"):
-    user_service.create_user(email="admin@yokostyles.com", password="admin123")
-
-def create_jwt_token(uuid: str) -> str:
+def create_jwt_token(uuid: int) -> str:
     """Generate JWT token with user ID payload"""
     expiry = datetime.utcnow() + timedelta(days=TOKEN_EXPIRY_DAYS)
     payload = {
@@ -64,15 +61,15 @@ async def main_page(client: Client):
         return
 
     # Get user from database
-    uuid = decoded["uuid"]
-    user = user_service.get_user_by_uuid(uuid)
+    db = next(get_db())
+    user = get_user_by_uuid(db, decoded.get("uuid"))
     if not user:
         app.storage.user['jwt_token'] = None
         ui.navigate.to('/login')
         return
 
     # Rest of your main page code...
-    gui_st = GUIState(user=user, db=db)
+    gui_st = GUIState(user=user)
     await client.disconnected()
     print('Closed connection ', gui_st.pattern_state.id, '. Deleting files...')
     gui_st.release()
@@ -92,8 +89,8 @@ def login_page():
         email = email_input.value
         password = password_input.value
 
-
-        user = user_service.get_user_by_email(email)
+        db = next(get_db())
+        user = get_user_by_email(db, email)
         if not user or user.password != password:
             ui.notify("Invalid credentials", color='negative')
             return
@@ -125,15 +122,15 @@ def login_page():
         password = password_input.value
         conf_password = conf_password_input.value
 
-
-        user = user_service.get_user_by_email(email)
+        db = next(get_db())
+        user = get_user_by_email(db, email)
         if user:
             ui.notify("Email already exists", color='negative')
             return
         if password!=conf_password:
             ui.notify("Passwords do not match", color='negative')
             return
-        user_service.create_user(email=email, password=password)
+        create_user(db, email=email, password=password)
         ui.notify("Signup successful!", color='positive')
         ui.navigate.to('/login')
 
@@ -151,7 +148,7 @@ def logout():
 if __name__ in {"__main__", "__mp_main__"}:
     ui.run(
         title="JWT Auth App",
-        storage_secret=os.getenv("UI_STORAGE_KEY"),
+        storage_secret="your_random_storage_secret_123",
         favicon=icon_image_b64,
         port=3000,
         show=True
