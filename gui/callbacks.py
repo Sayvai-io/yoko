@@ -128,7 +128,14 @@ class GUIState:
 
     # SECTION Top level layout
     def layout(self):
-        """Overall page layout"""
+        """Overall page layout
+        
+        This is the main UI layout method. It defines:
+        1. The header at the top
+        2. The main content area with parameter tabs only (no fixed 2D/3D views)
+        3. The footer at the bottom
+        4. A preview button that opens a popup with 2D/3D views
+        """
 
         # as % of viewport width/height
         self.h_header = 5
@@ -140,37 +147,27 @@ class GUIState:
 
         # Helpers
         self.def_pattern_waiting()
-        # TODOLOW One dialog for both?
         self.def_design_file_dialog()
         self.def_body_file_dialog()
-        # with ui.row().classes('absolute top-0 left-0 h-full'):
-        #     # Sidebar (Initially hidden, toggle visibility when arrow is clicked)
-        #     # with ui.column().classes('sidebar bg-gray-200 p-4').style('width: 250px; display: none;' if not app.storage.gui['sidebar_visible'] else 'width: 250px; display: block;'):
-        #     with ui.column().classes('sidebar bg-gray-200 p-4').style('width: 250px; display: none; width: 250px; display: block;'):
-        #         ui.label("Chats")
-        #         chats = self.chat_service.get_user_chats()
-        #         for chat in chats:
-        #             ui.button(f"{chat['title']} - {chat['created_at']}", on_click=lambda chat_uuid=chat['uuid']: ui.open(f'/chat/{chat_uuid}')).classes('w-full mb-2')
-
-        #     # Arrow button to toggle sidebar
-        #     ui.icon(name='chevron-left', size='32px').classes('absolute top-1/2 left-0 transform -translate-y-1/2 cursor-pointer')
-        # Configurator GUI
+        self.def_preview_dialog()  # Define the preview dialog
+        
+        # Configurator GUI - Main content area
         with ui.element('div').classes('w-full'):
             with ui.row(wrap=False).classes(f'w-full h-[{self.h_params_content}dvh] p-0 m-0 '):
-                # Tabs
-                self.def_param_tabs_layout()
+                # Parameter tabs (now takes full width)
+                with ui.column(wrap=False).classes('w-full'):
+                    self.def_param_tabs_layout()
+                    
+                    # Add a preview button at the bottom
+                    with ui.row().classes('w-full justify-center mt-4'):
+                        ui.button('Preview Design', icon='visibility', on_click=self.open_preview_dialog).props('color=primary size=large')
 
-                # Pattern visual
-                self.view_tabs_layout()
-
-            # Overall wrapping
-            # NOTE: https://nicegui.io/documentation/section_pages_routing#page_layout
-        with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] items-center bg-gradient-to-br from-blue-100 to-indigo-100  justify-end py-0 px-4 m-0'):
+        # Header - Appears at the top of the page
+        with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] items-center bg-gradient-to-br from-blue-100 to-indigo-100 justify-end py-0 px-4 m-0'):
             ui.label('Yokostyles - GarmentCode design configurator').classes('mr-auto text-black').style('font-size: 150%; font-weight: 400')
 
-        # NOTE No ui.left_drawer(), no ui.right_drawer()
+        # Footer - Appears at the bottom of the page
         with ui.footer(fixed=False, elevated=True).classes('items-center bg-gradient-to-br from-blue-100 to-indigo-100 justify-center p-0 m-0'):
-            # https://www.termsfeed.com/blog/sample-copyright-notices/
             ui.link(
                 '© 2025 Yokostyles',
                 'https://igl.ethz.ch/',
@@ -178,33 +175,35 @@ class GUIState:
             ).classes('text-black')
 
     def view_tabs_layout(self):
-        """2D/3D view tabs"""
-        with ui.column(wrap=False).classes(f'h-[{self.h_params_content}vh] w-full items-center'):
-            with ui.tabs() as tabs:
-                self.ui_2d_tab = ui.tab('Sewing Pattern')
-                self.ui_3d_tab = ui.tab('3D view')
-            with ui.tab_panels(tabs, value=self.ui_2d_tab, animated=True).classes('w-full h-full items-center'):
-                with ui.tab_panel(self.ui_2d_tab).classes('w-full h-full items-center justify-center p-0 m-0'):
-                    self.def_pattern_display()
-                with ui.tab_panel(self.ui_3d_tab).classes('w-full h-full items-center p-0 m-0'):
-                    self.def_3d_scene()
+        """This method is kept for backward compatibility but is no longer used.
+        Views are now displayed in a popup dialog instead of fixed tabs."""
+        pass
 
-            ui.button('Download Current Garment', on_click=lambda: self.state_download()).classes('justify-self-end')
-
-    # !SECTION
-    # SECTION -- Parameter menu
     def def_param_tabs_layout(self):
-        """Layout of tabs with parameters"""
-        with ui.column(wrap=False).classes(f'h-[{self.h_params_content}vh]'):
+        """Layout of tabs with parameters
+        
+        This method defines the parameter tabs for the main UI:
+        1. Tabs for different parameter types (Parse Design, Design parameters, Body parameters)
+        2. The content of each tab
+        """
+        with ui.column(wrap=False).classes('w-full h-full'):
+            # Tab navigation
             with ui.tabs() as tabs:
-                self.ui_parse_tab = ui.tab('Parse Design')    # Moved to first position
+                self.ui_parse_tab = ui.tab('Parse Design')
                 self.ui_design_tab = ui.tab('Design parameters')
                 self.ui_body_tab = ui.tab('Body parameters')
-            with ui.tab_panels(tabs, value=self.ui_parse_tab, animated=True).classes('w-full h-full items-center'):  # Changed default value to parse tab
+                
+            # Tab content panels - default tab is Parse Design
+            with ui.tab_panels(tabs, value=self.ui_parse_tab, animated=True).classes('w-full flex-grow'):
+                # Parse Design tab content
                 with ui.tab_panel(self.ui_parse_tab).classes('w-full h-full items-center p-0 m-0'):
                     self.def_parse_tab()
+                    
+                # Design parameters tab content
                 with ui.tab_panel(self.ui_design_tab).classes('w-full h-full items-center p-0 m-0'):
                     self.def_design_tab()
+                    
+                # Body parameters tab content
                 with ui.tab_panel(self.ui_body_tab).classes('w-full h-full items-center p-0 m-0'):
                     self.def_body_tab()
 
@@ -337,6 +336,62 @@ class GUIState:
                     use_collapsible=True
                 )
 
+    def def_parse_tab(self):
+        """Define content for Parse Design tab
+        
+        This method creates the chat-like interface for:
+        1. Text input for describing designs
+        2. File upload for reference images
+        3. Chat message display area
+        
+        To modify:
+        - Change layout by modifying the ui.column/ui.row structure
+        - Customize styling through .classes() and .style() methods
+        - Add or remove UI elements within each container
+        """
+        # Main container without scroll
+        with ui.column().classes('w-full h-full p-0 m-0'):
+            # Chat messages container with scroll
+            with ui.column().classes('w-full h-[80vh] p-4 gap-4'):
+                # Header text
+                ui.label('Describe your design or upload reference images').classes('text-lg font-medium text-gray-700')
+                # Modify header text or styling here
+
+                # Messages will be added here
+                self.chat_container = ui.column().classes('w-full flex-grow overflow-auto gap-4')
+                # Modify chat container styling here
+
+            # Input area at the bottom (redesigned)
+            with ui.row().classes('w-full items-center gap-3 p-4 bg-white border-t shadow-md'):
+                # Attachment icon button
+                ui.button(
+                    icon='attach_file',
+                    on_click=lambda: self.upload_dialog.open()
+                ).props('flat round color=primary').classes('min-w-[2.5rem] min-h-[2.5rem]')
+                # Modify button styling or behavior here
+
+                # Chat input field
+                self.chat_input = ui.input(
+                    placeholder='Describe your design...'
+                ).props('outlined rounded-3xl dense').classes('flex-grow text-base')
+                # Modify input styling or placeholder here
+
+                # Send button
+                ui.button(
+                    icon='send',
+                    on_click=self.handle_chat_input
+                ).props('unelevated round color=primary').classes('min-w-[2.5rem] min-h-[2.5rem]')
+                # Modify button styling or behavior here
+
+            # Add upload dialog
+            with ui.dialog() as self.upload_dialog, ui.card():
+                ui.upload(
+                    label='Upload reference image',
+                    on_upload=self.handle_image_upload,
+                    max_files=1
+                ).props('accept="image/*"')
+                ui.button('Close', on_click=self.upload_dialog.close)
+
     # !SECTION
     # SECTION -- Pattern visuals
     def def_pattern_display(self):
@@ -371,6 +426,37 @@ class GUIState:
 
     # !SECTION
     # SECTION 3D view
+    def create_lights(self, scene:ui.scene, intensity=30.0):
+        light_positions = np.array([
+            [1.60614, 1.23701, 1.5341,],
+            [1.31844, -2.52238, 1.92831],
+            [-2.80522, 2.34624, 1.2594],
+            [0.160261, 3.52215, 1.81789],
+            [-2.65752, -1.26328, 1.41194]
+        ])
+        light_colors = [
+            '#ffffff',
+            '#ffffff',
+            '#ffffff',
+            '#ffffff',
+            '#ffffff'
+        ]
+        z_dirs = np.arctan2(light_positions[:, 1], light_positions[:, 0])
+
+        # Add lights to the scene
+        for i in range(len(light_positions)):
+            scene.spot_light(
+                color=light_colors[i], intensity=intensity,
+                angle=np.pi,
+                ).rotate(0., 0., -z_dirs[i]).move(light_positions[i][0], light_positions[i][1], light_positions[i][2])
+
+    def create_camera(self, cam_location, fov, scale=1.):
+        camera = ui.scene.perspective_camera(fov=fov)
+        camera.x = cam_location[0] * scale
+        camera.y = cam_location[1] * scale
+        camera.z = cam_location[2] * scale
+
+        # direction
     def create_lights(self, scene:ui.scene, intensity=30.0):
         light_positions = np.array([
             [1.60614, 1.23701, 1.5341,],
@@ -513,46 +599,37 @@ class GUIState:
 
             ui.button('Close without upload', on_click=self.ui_design_dialog.close)
 
-    def def_parse_tab(self):
-        """Define content for Parse Design tab"""
-        # Main container without scroll
-        with ui.column().classes('w-full h-full p-0 m-0'):
-            # Chat messages container with scroll
-            with ui.column().classes('w-full h-[80vh] p-4 gap-4'):
-                # Header text
-                ui.label('Describe your design or upload reference images').classes('text-lg font-medium text-gray-700')
+    def def_preview_dialog(self):
+        """Create a dialog for the 2D/3D preview tabs"""
+        with ui.dialog() as self.preview_dialog, ui.card().classes('w-[90vw] h-[90vh] p-0'):
+            with ui.column().classes('w-full h-full p-0 m-0'):
+                # Header with close button
+                with ui.row().classes('w-full justify-between items-center p-2 bg-blue-50'):
+                    ui.label('Design Preview').classes('text-xl font-bold')
+                    ui.button(icon='close', on_click=self.preview_dialog.close).props('flat round')
+                
+                # Tab navigation
+                with ui.tabs().classes('w-full') as tabs:
+                    self.ui_2d_tab = ui.tab('Sewing Pattern')
+                    self.ui_3d_tab = ui.tab('3D view')
+                
+                # Tab content panels
+                with ui.tab_panels(tabs, value=self.ui_2d_tab).classes('w-full h-full'):
+                    # 2D pattern tab content
+                    with ui.tab_panel(self.ui_2d_tab).classes('w-full h-full items-center justify-center p-0 m-0'):
+                        self.def_pattern_display()
+                    
+                    # 3D view tab content
+                    with ui.tab_panel(self.ui_3d_tab).classes('w-full h-full items-center p-0 m-0'):
+                        self.def_3d_scene()
+                
+                # Controls below the tabs
+                with ui.row().classes('w-full p-2 justify-end'):
+                    ui.button('Download Current Garment', on_click=lambda: self.state_download()).classes('justify-self-end')
 
-                # Messages will be added here
-                self.chat_container = ui.column().classes('w-full flex-grow overflow-auto gap-4')
-
-            # Input area at the bottom (redesigned)
-            with ui.row().classes('w-full items-center gap-3 p-4 bg-white border-t shadow-md'):
-                # Attachment icon button
-                ui.button(
-                    icon='attach_file',
-                    on_click=lambda: self.upload_dialog.open()
-                ).props('flat round color=primary').classes('min-w-[2.5rem] min-h-[2.5rem]')
-
-                # Chat input field
-                self.chat_input = ui.input(
-                    placeholder='Describe your design...'
-                ).props('outlined rounded-3xl dense').classes('flex-grow text-base')
-
-                # Send button
-                ui.button(
-                    icon='send',
-                    on_click=self.handle_chat_input
-                ).props('unelevated round color=primary').classes('min-w-[2.5rem] min-h-[2.5rem]')
-
-
-            # Add upload dialog
-            with ui.dialog() as self.upload_dialog, ui.card():
-                ui.upload(
-                    label='Upload reference image',
-                    on_upload=self.handle_image_upload,
-                    max_files=1
-                ).props('accept="image/*"')
-                ui.button('Close', on_click=self.upload_dialog.close)
+    def open_preview_dialog(self):
+        """Open the preview dialog"""
+        self.preview_dialog.open()
 
     async def handle_chat_input(self):
         """Handle chat input and update pattern"""
