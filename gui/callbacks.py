@@ -21,8 +21,8 @@ from sqlalchemy.orm import Session
 # Async execution of regular functions
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
-import uuid
-
+from db.models import generate_unique_uid, Chat, MessageTypeEnum
+import ast
 # Customdede
 from .gui_pattern import GUIPattern
 from .pattern_parser import PatternParser
@@ -65,7 +65,7 @@ class GUIState:
         self.user = user
         self.chat_service = ChatService(db, user_id=user.id)
         self.message_service = MessageService(db, user_id=user.id)
-        self.chat_uid = str(uuid.uuid4())
+        self.chat_uid = generate_unique_uid(model=Chat, field='chat_uid')
         self.window = None
         self.content_type = None
         self.image_bytes = None
@@ -188,12 +188,12 @@ class GUIState:
     def def_param_tabs_layout(self):
         """Layout of tabs with parameters"""
         with ui.column(wrap=False).classes(f'h-[{self.h_params_content}vh]'):
-            with ui.tabs() as tabs:
+            with ui.tabs() as self.tabs:
                 self.ui_chat_history = ui.tab('Chat History')    # Moved to first position
                 self.ui_parse_tab = ui.tab('Parse Design')    # Moved to first position
                 self.ui_design_tab = ui.tab('Design parameters')
                 self.ui_body_tab = ui.tab('Body parameters')
-            with ui.tab_panels(tabs, value=self.ui_parse_tab, animated=True).classes('w-full h-full items-center'):  # Changed default value to parse tab
+            with ui.tab_panels(self.tabs, value=self.ui_parse_tab, animated=True).classes('w-full h-full items-center'):  # Changed default value to parse tab
                 with ui.tab_panel(self.ui_chat_history).classes('w-full h-full items-center p-0 m-0'):
                     self.def_chat_history()
                 with ui.tab_panel(self.ui_parse_tab).classes('w-full h-full items-center p-0 m-0'):
@@ -509,9 +509,13 @@ class GUIState:
             ui.button('Close without upload', on_click=self.ui_design_dialog.close)
 
     def def_chat_history(self):
-        def open_chat(chat_uid):
-            self.chat_uid = chat_uid
-            #need to refresh page with this chat
+        def start_edit(self, chat):
+            chat.editing = True
+            ui.update()
+
+        def cancel_edit(self, chat):
+            chat.editing = False
+            ui.update()
 
         chat_history = self.chat_service.get_user_chats()
         def format_time(dt):
@@ -526,7 +530,7 @@ class GUIState:
             return dt.strftime("%b %d")
         with ui.row().classes("w-full h-screen"):
             # Sidebar
-            with ui.column().classes("w-64 h-full border-r bg-white shadow-sm"):
+            with ui.column().classes("w-full h-full border-r bg-white shadow-sm"):
                 # Header
                 with ui.row().classes("w-full p-4 border-b items-center justify-between"):
                     ui.label("Chat History").classes("text-lg font-semibold")
@@ -541,22 +545,28 @@ class GUIState:
                 # Chat list
                 with ui.column().classes("w-full overflow-y-auto"):
                     for chat in chat_history:
-                        with ui.row().classes(f"""
-                            w-full p-3 items-center cursor-pointer
-                            {"bg-blue-50" if self.chat_uid==chat.chat_uid else "hover:bg-gray-50"}
-                        """):
-                            with ui.column().classes("w-full"):
-                                ui.label(chat.title).classes("text-sm font-medium text-gray-900 truncate")
-                                ui.label(format_time(chat.created_at)).classes("text-xs text-gray-500")
+                        is_selected = self.chat_uid == chat.chat_uid
+
+                        with ui.row().classes(f"""w-full p-3 items-center cursor-pointer {"bg-blue-50" if is_selected else "hover:bg-gray-50"}""").on('click', lambda e, c=chat: asyncio.create_task(self.open_previous_chat(c.chat_uid))):
+
+                            if hasattr(chat, 'editing') and chat.editing:
+                                input_box = ui.input(value=chat.title).classes("text-sm w-full")
+                                with ui.row().classes("gap-2 mt-1"):
+                                    ui.button('Save', on_click=lambda c=chat, i=input_box: self.chat_service.update_chat_title(chat_uid=c.chat_uid, title=i.value)).props('dense flat')
+                                    ui.button('Cancel', on_click=lambda c=chat: cancel_edit(c)).props('dense flat text-red')
+                            else:
+                                with ui.row().classes("w-full items-center justify-between gap-3"):
+                                    with ui.column().classes("flex-1"):
+                                        ui.label(chat.title).classes("text-sm font-medium text-gray-900 truncate")
+                                        ui.label(format_time(chat.created_at)).classes("text-xs text-gray-500")
+                                    ui.button(icon='edit', on_click=lambda c=chat: start_edit(c)).props('dense flat')
+
+
 
                 # User section at bottom
                 with ui.row().classes("w-full p-3 border-t items-center gap-2 mt-auto"):
                     ui.avatar("U", color="blue").classes("bg-blue-100 text-blue-600")
-                    ui.label("User Name").classes("text-sm font-medium text-gray-900")
-
-            # Main content area
-            with ui.column().classes("flex-1 h-full bg-white"):
-                ui.label("Main Chat Area").classes("text-xl font-semibold p-4")
+                    ui.label(self.user.email).classes("text-sm font-medium text-gray-900")
 
     def def_parse_tab(self):
         """Define content for Parse Design tab"""
@@ -568,7 +578,7 @@ class GUIState:
                 ui.label('Describe your design or upload reference images').classes('text-lg font-medium text-gray-700')
 
                 # Messages will be added here
-                self.chat_container = ui.column().classes('w-full flex-grow overflow-auto gap-4')
+                o = ui.column().classes('w-full flex-grow overflow-auto gap-4')
 
             # Input area at the bottom (redesigned)
             with ui.row().classes('w-full items-center gap-3 p-4 bg-white border-t shadow-md'):
@@ -599,18 +609,68 @@ class GUIState:
                 ).props('accept="image/*"')
                 ui.button('Close', on_click=self.upload_dialog.close)
 
+    async def open_previous_chat(self,chat_uid:str, isNew:bool = False):
+        try:
+            self.spin_dialog.open()
+            if not chat_uid:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat uid must not be empty")
+            chat = self.chat_service.get_chat_by_uid(chat_uid)
+            prompt_lists = self.message_service.get_messages_by_chat(chat_uid=chat_uid)
+            self.tabs.value = self.ui_parse_tab
+            self.chat_uid = chat_uid
+            o.clear()
+            for prompt in prompt_lists:
+                self.add_parse_tab_prompt(prompt=prompt.message, isUser=True)
+                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False)
+            try:
+                raw_response = prompt_lists[-1].response
+                params = ast.literal_eval(raw_response)
+                self.toggle_param_update_events(self.ui_design_refs)
+                self.pattern_state.set_new_design(params)
+                self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
+                await self.update_pattern_ui_state()
+                self.toggle_param_update_events(self.ui_design_refs)
+            except (ValueError, SyntaxError) as e:
+                print(f"Invalid dict format: {e}")
+
+        except Exception as e:
+            print(e)
+        finally:
+            self.spin_dialog.close()
+
+
+
+    def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT):
+        if isUser:
+            if prompt_type == MessageTypeEnum.TEXT:
+                with o:
+                    with ui.row().classes('w-full justify-end'):
+                        with ui.card().classes('max-w-[70%] p-1 bg-blue-100 rounded-xl shadow-sm'):
+                            with ui.column().classes('p-3 gap-1'):
+                                ui.label(prompt).classes('text-gray-900 text-base')
+                                ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500 text-right')
+            elif prompt_type == MessageTypeEnum.IMAGE:
+                with self.chat_container:
+                    with ui.card().classes('w-3/4 ml-auto bg-gray-200 rounded-lg'):
+                        ui.label('Reference image:').classes('p-2')
+                        ui.image(prompt).classes('w-full rounded-lg')
+                        ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500 p-2')
+        else:
+            with self.chat_container:
+                with ui.row().classes('w-full justify-start'):
+                    with ui.card().classes('max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):
+                        with ui.column().classes('p-3 gap-1'):
+                            ui.label(prompt).classes('text-gray-800 text-base')
+                            ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500 text-left')
+
+
     async def handle_chat_input(self):
         """Handle chat input and update pattern"""
         if not self.chat_input.value:
             return
 
         # Add user message (right-aligned bubble)
-        with self.chat_container:
-            with ui.row().classes('w-full justify-end'):
-                with ui.card().classes('max-w-[70%] p-1 bg-blue-100 rounded-xl shadow-sm'):
-                    with ui.column().classes('p-3 gap-1'):
-                        ui.label(self.chat_input.value).classes('text-gray-900 text-base')
-                        ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500 text-right')
+        self.add_parse_tab_prompt(prompt=self.chat_input.value, isUser=True)
 
         try:
             # Show existing spinner dialog
@@ -618,9 +678,14 @@ class GUIState:
 
             # Process input through LLM using ThreadPoolExecutor
             loop = asyncio.get_event_loop()
+            try:
+                prompts = self.message_service.get_messages_by_chat(chat_uid=self.chat_uid)
+                prompts = prompts[len(prompts)-20:] if len(prompts)>20 else prompts
+            except Exception as e:
+                prompts = []
             params = await loop.run_in_executor(
                 self._async_executor,
-                lambda: self.pattern_parser.process_input(text=self.chat_input.value)
+                lambda: self.pattern_parser.process_input(prompts=prompts, text=self.chat_input.value)
             )
             print(params)
 
@@ -636,12 +701,7 @@ class GUIState:
             except Exception as e:
                 print(e)
             # Add system message (left-aligned bubble)
-            with self.chat_container:
-                with ui.row().classes('w-full justify-start'):
-                    with ui.card().classes('max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):
-                        with ui.column().classes('p-3 gap-1'):
-                            ui.label("I've updated the pattern based on your description. You can adjust the parameters further if needed.").classes('text-gray-800 text-base')
-                            ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500 text-left')
+            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False)
 
         except TimeoutError:
             ui.notify('Request timed out. Please try again.', type='negative')
@@ -678,20 +738,19 @@ class GUIState:
             data_url = f'data:{self.content_type};base64,{base64.b64encode(self.image_bytes).decode()}'
             self.data_url = data_url
             # Add user message with image
-            with self.chat_container:
-                with ui.card().classes('w-3/4 ml-auto bg-gray-200 rounded-lg'):
-                    ui.label('Reference image:').classes('p-2')
-                    ui.image(data_url).classes('w-full rounded-lg')
-                    ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500 p-2')
-
+            self.add_parse_tab_prompt(prompt=data_url, isUser=True, prompt_type=MessageTypeEnum.IMAGE)
             # Show spinner while processing
             self.spin_dialog.open()
-
+            try:
+                prompts = self.message_service.get_messages_by_chat(chat_uid=self.chat_uid)
+                prompts = prompts[len(prompts)-20:] if len(prompts)>20 else prompts
+            except Exception as e:
+                prompts = []
             # Process through LLM using ThreadPoolExecutor
             loop = asyncio.get_event_loop()
             params = await loop.run_in_executor(
                 self._async_executor,
-                lambda: self.pattern_parser.process_input(image_data=(self.image_bytes, self.content_type))
+                lambda: self.pattern_parser.process_input(prompts=prompts, image_data=(self.image_bytes, self.content_type))
             )
 
             # Update design parameters
@@ -700,13 +759,12 @@ class GUIState:
             self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
             await self.update_pattern_ui_state()
             self.toggle_param_update_events(self.ui_design_refs)
-
+            try:
+                self.message_service.add_message(chat_uid=self.chat_uid, message=self.data_url, response=str(params), message_type=MessageTypeEnum.IMAGE)
+            except Exception as e:
+                print(e)
             # Add system response
-            with self.chat_container:
-                with ui.card().classes('w-3/4 mr-auto bg-white rounded-lg'):
-                    with ui.column().classes('p-3 gap-1'):
-                        ui.label("I've updated the pattern based on your reference image. You can adjust the parameters further if needed.").classes('text-gray-800')
-                        ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False)
 
             ui.notify(f'Successfully processed {e.name}')
             self.upload_dialog.close()

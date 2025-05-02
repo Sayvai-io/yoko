@@ -3,8 +3,8 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import HTTPException, status
 import uuid
-from db.models import User, Chat, Message, Model, MessageTypeEnum
-from db.repositories import UserRepository
+from db.models import User, Chat, Message, File, MessageTypeEnum
+from db.repositories import *
 
 class BaseService:
     """Base service class with common functionality"""
@@ -32,26 +32,22 @@ class ChatService(BaseService):
     def __init__(self, db: Session, user_id: int):
         super().__init__(db)
         self.user_id = user_id
+        self.chat_repo = ChatRepository(db=db, user_id=user_id)
 
     def create_chat(self, title: Optional[str] = "Untitled Chat", chat_uid: Optional[str] = str(uuid.uuid4())) -> Chat:
-        chat = Chat(user_id=self.user_id, title=title, chat_uid = chat_uid)
-        self.db.add(chat)
-        self.db.commit()
-        self.db.refresh(chat)
-        return chat
+        return self.chat_repo.create_chat(title=title, chat_uid = chat_uid)
 
     def update_chat_title(self, title: str, chat_uid: str) -> Chat:
         chat = self.get_chat_by_uid(chat_uid)
-        chat.title = title
-        self.db.commtt()
-        self.db.refresh(chat)
-        return chat
+        if not chat:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found")
+        return self.chat_repo.update_chat_title(title, chat_uid)
 
     def get_user_chats(self) -> List[Chat]:
-        return self.db.query(Chat).filter_by(user_id=self.user_id).order_by(Chat.created_at.desc()).all()
+        return self.chat_repo.get_user_chats()
 
     def get_chat_by_uid(self, chat_uid: str) -> Optional[Chat]:
-        return self.db.query(Chat).filter_by(user_id=self.user_id, chat_uid=chat_uid).first()
+        return self.chat_repo.get_chat_by_uid(chat_uid=chat_uid)
 
     def delete_chat(self, chat_uid: str) -> bool:
         chat = self.get_chat_by_uid(chat_uid)
@@ -74,7 +70,6 @@ class MessageService(BaseService):
         chat = self.chat_service.get_chat_by_uid(chat_uid)
         if not chat:
             chat = self.chat_service.create_chat(chat_uid=chat_uid)
-            print(chat.chat_uid)
         msg = Message(user_id=self.user_id, chat_id=chat.id, message=message, response=response)
         self.db.add(msg)
         self.db.commit()
@@ -115,8 +110,8 @@ class FileService(BaseService):
         super().__init__(db)
         self.user_id = user_id
 
-    def create_file(self, title: str, zip_file_link: str) -> Model:
-        db_file = Model(
+    def create_file(self, title: str, zip_file_link: str) -> File:
+        db_file = File(
             user_id=self.user_id,
             title=title,
             zip_file_link=zip_file_link
@@ -126,13 +121,13 @@ class FileService(BaseService):
         self.db.refresh(db_file)
         return db_file
 
-    def get_user_files(self) -> List[Model]:
-        return self.db.query(Model).filter(Model.user_id == self.user_id).all()
+    def get_user_files(self) -> List[File]:
+        return self.db.query(File).filter(File.user_id == self.user_id).all()
 
-    def get_file_by_uid(self, file_uid: str) -> Optional[Model]:
-        return self.db.query(Model).filter(Model.uid == file_uid, Model.user_id == self.user_id).first()
+    def get_file_by_uid(self, file_uid: str) -> Optional[File]:
+        return self.db.query(File).filter(File.uid == file_uid, File.user_id == self.user_id).first()
 
-    def update_file_title(self, file_uid: str, new_title: str) -> Optional[Model]:
+    def update_file_title(self, file_uid: str, new_title: str) -> Optional[File]:
         db_file = self.get_file_by_uid(file_uid)
         if db_file:
             db_file.title = new_title
