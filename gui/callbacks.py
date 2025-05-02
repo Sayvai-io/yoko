@@ -133,8 +133,7 @@ class GUIState:
         This is the main UI layout method. It defines:
         1. The header at the top
         2. The main content area with parameter tabs only (no fixed 2D/3D views)
-        3. The footer at the bottom
-        4. A preview button that opens a popup with 2D/3D views
+        3. A preview button that opens a popup with 2D/3D views
         """
 
         # as % of viewport width/height
@@ -166,13 +165,7 @@ class GUIState:
         with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] items-center bg-gradient-to-br from-blue-100 to-indigo-100 justify-end py-0 px-4 m-0'):
             ui.label('Yokostyles - GarmentCode design configurator').classes('mr-auto text-black').style('font-size: 150%; font-weight: 400')
 
-        # Footer - Appears at the bottom of the page
-        with ui.footer(fixed=False, elevated=True).classes('items-center bg-gradient-to-br from-blue-100 to-indigo-100 justify-center p-0 m-0'):
-            ui.link(
-                '© 2025 Yokostyles',
-                'https://igl.ethz.ch/',
-                new_tab=True
-            ).classes('text-black')
+    
 
     def view_tabs_layout(self):
         """This method is kept for backward compatibility but is no longer used.
