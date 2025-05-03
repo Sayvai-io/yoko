@@ -141,7 +141,17 @@ class GUIState:
             with ui.column().classes('sidebar bg-gray-50 p-4 h-full shadow-lg z-10 transition-all duration-300').style(
                 'width: 300px; position: absolute; left: 0px; top: 0; bottom: 0;'
             ) as self.sidebar:
-                ui.label("Recent Designs").classes('text-xl font-bold mb-6 text-gray-800')
+                # Header row with title and new chat button
+                with ui.row().classes('w-full justify-between items-center mb-2'):
+                    ui.label("Recent Designs").classes('text-xl font-bold text-gray-800')
+                    # New chat button with add icon
+                    ui.button(icon='add', on_click=lambda: self.create_new_chat()).props('round flat').classes('text-primary')
+                
+                # Search input
+                with ui.row().classes('w-full mb-4'):
+                    search_input = ui.input(placeholder='Search designs...').props('dense outlined').classes('w-full')
+                    search_input.on('input', lambda e: self.filter_chats(e.value))
+                
                 # Add some example items to the sidebar
                 self.chat_cards = []
                 self.title_labels = []
