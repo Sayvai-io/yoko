@@ -228,25 +228,13 @@ class GUIState:
         edit_dialog.open()
     
     def delete_chat(self, chat_index):
-        """Delete a chat"""
-        # Function to handle the delete confirmation
-        def confirm_delete():
-            # Remove the card from UI
-            self.chat_cards[chat_index].delete()
-            
-            # Here you would delete the chat from your database
-            ui.notify(f"Deleted chat: Design {chat_index+1}")
-            confirm_dialog.close()
-        
-        # Create a confirmation dialog
-        with ui.dialog() as confirm_dialog, ui.card():
-            ui.label("Confirm Deletion").classes("text-lg font-bold")
-            ui.label(f"Are you sure you want to delete 'Design {chat_index+1}'?")
-            with ui.row().classes("w-full justify-end gap-2 mt-4"):
-                ui.button("Cancel", on_click=confirm_dialog.close).props("flat")
-                ui.button("Delete", on_click=confirm_delete).props("color=negative")
-            
-        confirm_dialog.open()
+        """Delete a chat immediately without confirmation"""
+        try:
+            if chat_index < len(self.chat_cards):
+                # Remove the card from UI
+                self.chat_cards[chat_index].delete()
+        except Exception as e:
+            print(f"Error in delete_chat: {str(e)}")
 
     def toggle_edit_mode(self, chat_index):
         """Toggle between display and edit mode for a chat title"""
