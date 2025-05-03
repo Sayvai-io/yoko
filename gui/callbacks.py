@@ -137,45 +137,116 @@ class GUIState:
         self.w_garment_display = 65
         self.w_splitter_design = 32
         self.scene_base_resoltion = (1024, 800)
+        
+        # Initialize sidebar visibility state
+        if 'sidebar_visible' not in app.storage.user:
+            app.storage.user['sidebar_visible'] = False
 
         # Helpers
         self.def_pattern_waiting()
         # TODOLOW One dialog for both?
         self.def_design_file_dialog()
         self.def_body_file_dialog()
-        # with ui.row().classes('absolute top-0 left-0 h-full'):
-        #     # Sidebar (Initially hidden, toggle visibility when arrow is clicked)
-        #     # with ui.column().classes('sidebar bg-gray-200 p-4').style('width: 250px; display: none;' if not app.storage.gui['sidebar_visible'] else 'width: 250px; display: block;'):
-        #     with ui.column().classes('sidebar bg-gray-200 p-4').style('width: 250px; display: none; width: 250px; display: block;'):
-        #         ui.label("Chats")
-        #         chats = self.chat_service.get_user_chats()
-        #         for chat in chats:
-        #             ui.button(f"{chat['title']} - {chat['created_at']}", on_click=lambda chat_uuid=chat['uuid']: ui.open(f'/chat/{chat_uuid}')).classes('w-full mb-2')
+        
+        # Main container with sidebar
+        with ui.element('div').classes('w-full h-full flex relative'):
+            # Sidebar (initially hidden)
+            with ui.column().classes('sidebar bg-gray-100 p-4 h-full shadow-lg z-10 transition-all duration-300').style(
+                f'width: 250px; position: absolute; left: {0 if app.storage.user["sidebar_visible"] else -250}px; top: 0; bottom: 0;'
+            ) as self.sidebar:
+                ui.label("Recent Designs").classes('text-lg font-bold mb-4')
+                # Add some example items to the sidebar
+                self.chat_cards = []
+                self.title_labels = []
+                for i in range(5):
+                    with ui.card().classes('w-full mb-1 p-1 cursor-pointer hover:bg-blue-100') as card:
+                        self.chat_cards.append(card)
+                        with ui.row().classes('w-full justify-between items-center'):
+                            title_label = ui.label(f"Design {i+1}").classes('font-medium text-md')
+                            self.title_labels.append(title_label)
+                            
+                            # Three-dot menu
+                            with ui.button(icon='more_vert').props('flat dense round size="sm"').classes('min-w-6 h-6') as menu_btn:
+                                with ui.menu().props('auto-close') as menu:
+                                    ui.menu_item('Edit', on_click=lambda i=i: self.edit_chat_title(i)).props('icon=edit')
+                                    ui.menu_item('Delete', on_click=lambda i=i: self.delete_chat(i)).props('icon=delete color=red')
+                        
+                        ui.label(f"Created {datetime.now().strftime('%Y-%m-%d')}").classes('text-xs text-gray-500 text-left')
+            
+            # Main content area
+            with ui.element('div').classes('w-full transition-all duration-300').style(
+                f'margin-left: {250 if app.storage.user["sidebar_visible"] else 0}px;'
+            ) as self.main_content:
+                with ui.row(wrap=False).classes(f'w-full h-[{self.h_params_content}dvh] p-0 m-0'):
+                    # Tabs
+                    self.def_param_tabs_layout()
 
-        #     # Arrow button to toggle sidebar
-        #     ui.icon(name='chevron-left', size='32px').classes('absolute top-1/2 left-0 transform -translate-y-1/2 cursor-pointer')
-        # Configurator GUI
-        with ui.element('div').classes('w-full'):
-            with ui.row(wrap=False).classes(f'w-full h-[{self.h_params_content}dvh] p-0 m-0 '):
-                # Tabs
-                self.def_param_tabs_layout()
+                    # Pattern visual
+                    self.view_tabs_layout()
 
-                # Pattern visual
-                self.view_tabs_layout()
-
-            # Overall wrapping
-            # NOTE: https://nicegui.io/documentation/section_pages_routing#page_layout
-        with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] items-center bg-gradient-to-br from-blue-100 to-indigo-100 justify-end py-0 px-4 m-0 '):
+        # Header
+        with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] items-center bg-gradient-to-br from-blue-100 to-indigo-100 justify-end py-0 px-4 m-0 z-30'):
+            # Toggle sidebar button in header
+            self.sidebar_toggle = ui.button(on_click=self.toggle_sidebar).props('flat round').classes('mr-2')
+            with self.sidebar_toggle:
+                ui.icon('menu' if not app.storage.user['sidebar_visible'] else 'chevron_left')
+                
             ui.label('Yokostyles - GarmentCode design configurator').classes('mr-auto text-black').style('font-size: 150%; font-weight: 400')
 
-        # # NOTE No ui.left_drawer(), no ui.right_drawer()
-        # with ui.footer(fixed=False, elevated=True).classes('items-center bg-gradient-to-br from-blue-100 to-indigo-100 justify-center p-0 m-0'):
-        #     # https://www.termsfeed.com/blog/sample-copyright-notices/
-        #     ui.link(
-        #         '© 2025 Yokostyles',
-        #         'https://igl.ethz.ch/',
-        #         new_tab=True
-        #     ).classes('text-black')
+    def toggle_sidebar(self):
+        """Toggle the sidebar visibility"""
+        app.storage.user['sidebar_visible'] = not app.storage.user['sidebar_visible']
+        self.sidebar.style(f'left: {0 if app.storage.user["sidebar_visible"] else -250}px')
+        # Update the icon on the toggle button
+        self.sidebar_toggle.clear()
+        with self.sidebar_toggle:
+            ui.icon('chevron_left' if app.storage.user['sidebar_visible'] else 'menu')
+
+    def enable_chat_controls(self, value=True):
+        self.m_send_button.enable(value)
+        self.multiline_chat.enable(value) 
+
+    def edit_chat_title(self, chat_index):
+        """Edit the title of a chat"""
+        # Function to handle the edit submission
+        def save_title():
+            # Update the title in UI
+            self.title_labels[chat_index].set_text(title_input.value)
+            
+            # Here you would update the chat title in your database
+            ui.notify(f"Chat title updated to: {title_input.value}")
+            edit_dialog.close()
+        
+        # Create a dialog for editing the title
+        with ui.dialog() as edit_dialog, ui.card():
+            ui.label("Edit Chat Title").classes("text-lg font-bold")
+            title_input = ui.input("New title", value=f"Design {chat_index+1}")
+            with ui.row().classes("w-full justify-end gap-2 mt-4"):
+                ui.button("Cancel", on_click=edit_dialog.close).props("flat")
+                ui.button("Save", on_click=save_title).props("color=primary")
+            
+        edit_dialog.open()
+    
+    def delete_chat(self, chat_index):
+        """Delete a chat"""
+        # Function to handle the delete confirmation
+        def confirm_delete():
+            # Remove the card from UI
+            self.chat_cards[chat_index].delete()
+            
+            # Here you would delete the chat from your database
+            ui.notify(f"Deleted chat: Design {chat_index+1}")
+            confirm_dialog.close()
+        
+        # Create a confirmation dialog
+        with ui.dialog() as confirm_dialog, ui.card():
+            ui.label("Confirm Deletion").classes("text-lg font-bold")
+            ui.label(f"Are you sure you want to delete 'Design {chat_index+1}'?")
+            with ui.row().classes("w-full justify-end gap-2 mt-4"):
+                ui.button("Cancel", on_click=confirm_dialog.close).props("flat")
+                ui.button("Delete", on_click=confirm_delete).props("color=negative")
+            
+        confirm_dialog.open()
 
     def view_tabs_layout(self):
         """2D/3D view tabs"""
