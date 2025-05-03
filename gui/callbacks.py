@@ -301,9 +301,13 @@ class GUIState:
             
     def restore_title_row(self, chat_index, title):
         """Restore the title row with the given title"""
+        # First, clear the chat card's content
+        self.chat_cards[chat_index].clear()
+        
+        # Recreate the card content with proper structure
         with self.chat_cards[chat_index]:
+            # Title row with 3-dot menu
             with ui.row().classes('w-full justify-between items-center'):
-                # Create new label with the title
                 new_label = ui.label(title).classes('font-medium text-md')
                 self.title_labels[chat_index] = new_label
                 
@@ -312,6 +316,9 @@ class GUIState:
                     with ui.menu().props('auto-close') as menu:
                         ui.menu_item('Edit', on_click=lambda i=chat_index: self.toggle_edit_mode(i)).props('icon=edit')
                         ui.menu_item('Delete', on_click=lambda i=chat_index: self.delete_chat(i)).props('icon=delete color=red')
+            
+            # Date row (below title)
+            ui.label(f"Created {datetime.now().strftime('%Y-%m-%d')}").classes('text-xs text-gray-500 text-left')
 
     def view_tabs_layout(self):
         """2D/3D view tabs"""
