@@ -168,7 +168,7 @@ class GUIState:
                             # Three-dot menu
                             with ui.button(icon='more_vert').props('flat dense round size="sm"').classes('min-w-6 h-6') as menu_btn:
                                 with ui.menu().props('auto-close') as menu:
-                                    ui.menu_item('Edit', on_click=lambda i=i: self.edit_chat_title(i)).props('icon=edit')
+                                    ui.menu_item('Edit', on_click=lambda i=i: self.toggle_edit_mode(i)).props('icon=edit')
                                     ui.menu_item('Delete', on_click=lambda i=i: self.delete_chat(i)).props('icon=delete color=red')
                         
                         ui.label(f"Created {datetime.now().strftime('%Y-%m-%d')}").classes('text-xs text-gray-500 text-left')
@@ -247,6 +247,83 @@ class GUIState:
                 ui.button("Delete", on_click=confirm_delete).props("color=negative")
             
         confirm_dialog.open()
+
+    def toggle_edit_mode(self, chat_index):
+        """Toggle between display and edit mode for a chat title"""
+        try:
+            if chat_index >= len(self.title_labels):
+                return
+                
+            # Get the current title
+            current_title = self.title_labels[chat_index].text
+            
+            # Remove the existing title label
+            self.title_labels[chat_index].delete()
+            
+            # Create an input field in place of the label
+            with self.chat_cards[chat_index]:
+                input_row = ui.row().classes('w-full justify-between items-center')
+                with input_row:
+                    title_input = ui.input(value=current_title).classes('w-full p-0 m-0').props('dense autofocus borderless')
+                    
+                    # Add buttons with more modern styling
+                    with ui.row().classes('gap-1 flex-nowrap'):
+                        save_btn = ui.button(icon='check').props('flat dense round size="sm" color="positive"').classes('min-w-6 h-6')
+                        cancel_btn = ui.button(icon='close').props('flat dense round size="sm" color="negative"').classes('min-w-6 h-6')
+            
+            # Handle cancel (restore original title)
+            def cancel_edit():
+                input_row.delete()
+                self.restore_title_row(chat_index, current_title)
+                
+            cancel_btn.on('click', cancel_edit)
+            
+            # Handle save on click
+            def save_title():
+                new_title = title_input.value
+                input_row.delete()
+                
+                # Recreate the original row with new title
+                self.restore_title_row(chat_index, new_title)
+                
+                # Add success feedback
+                ui.notify(f"Title updated to: {new_title}", type="positive", position="bottom-right", timeout=2)
+                
+            save_btn.on('click', save_title)
+            
+            # Handle Enter key press to save using keydown.enter event
+            def on_keypress(e):
+                if hasattr(e, 'key'):
+                    if e.key == 'Enter':
+                        save_title()
+                    elif e.key == 'Escape':
+                        cancel_edit()
+                elif hasattr(e, 'code'):
+                    if e.code == 'Enter':
+                        save_title()
+                    elif e.code == 'Escape':
+                        cancel_edit()
+                    
+            title_input.on('keydown.enter', lambda e: save_title())
+            title_input.on('keydown.esc', lambda e: cancel_edit())
+            
+        except Exception as e:
+            ui.notify(f"Error while editing: {str(e)}", type="negative")
+            print(f"Error in toggle_edit_mode: {str(e)}")
+            
+    def restore_title_row(self, chat_index, title):
+        """Restore the title row with the given title"""
+        with self.chat_cards[chat_index]:
+            with ui.row().classes('w-full justify-between items-center'):
+                # Create new label with the title
+                new_label = ui.label(title).classes('font-medium text-md')
+                self.title_labels[chat_index] = new_label
+                
+                # Three-dot menu
+                with ui.button(icon='more_vert').props('flat dense round size="sm"').classes('min-w-6 h-6') as menu_btn:
+                    with ui.menu().props('auto-close') as menu:
+                        ui.menu_item('Edit', on_click=lambda i=chat_index: self.toggle_edit_mode(i)).props('icon=edit')
+                        ui.menu_item('Delete', on_click=lambda i=chat_index: self.delete_chat(i)).props('icon=delete color=red')
 
     def view_tabs_layout(self):
         """2D/3D view tabs"""
