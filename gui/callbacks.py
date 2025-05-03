@@ -127,7 +127,7 @@ class GUIState:
         
         # Initialize sidebar visibility state
         if 'sidebar_visible' not in app.storage.user:
-            app.storage.user['sidebar_visible'] = False
+            app.storage.user['sidebar_visible'] = True  # Set to True to have sidebar open by default
 
         # Helpers
         self.def_pattern_waiting()
@@ -137,9 +137,9 @@ class GUIState:
         
         # Main container with sidebar
         with ui.element('div').classes('w-full h-full flex relative'):
-            # Sidebar (initially hidden)
+            # Sidebar (initially visible)
             with ui.column().classes('sidebar bg-gray-50 p-4 h-full shadow-lg z-10 transition-all duration-300').style(
-                f'width: 300px; position: absolute; left: {0 if app.storage.user["sidebar_visible"] else -300}px; top: 0; bottom: 0;'
+                'width: 300px; position: absolute; left: 0px; top: 0; bottom: 0;'
             ) as self.sidebar:
                 ui.label("Recent Designs").classes('text-xl font-bold mb-6 text-gray-800')
                 # Add some example items to the sidebar
@@ -162,7 +162,7 @@ class GUIState:
             
             # Main content area
             with ui.element('div').classes('w-full transition-all duration-300').style(
-                f'margin-left: {300 if app.storage.user["sidebar_visible"] else 0}px;'
+                'margin-left: 300px;'
             ) as self.main_content:
                 with ui.row(wrap=False).classes(f'w-full h-[{self.h_params_content}dvh] p-0 m-0'):
                     # Tabs
@@ -184,6 +184,8 @@ class GUIState:
         """Toggle the sidebar visibility"""
         app.storage.user['sidebar_visible'] = not app.storage.user['sidebar_visible']
         self.sidebar.style(f'left: {0 if app.storage.user["sidebar_visible"] else -300}px')
+        # Update the main content margin to remove empty space when sidebar is closed
+        self.main_content.style(f'margin-left: {300 if app.storage.user["sidebar_visible"] else 0}px')
         # Update the icon on the toggle button
         self.sidebar_toggle.clear()
         with self.sidebar_toggle:
