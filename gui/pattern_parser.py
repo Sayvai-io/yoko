@@ -34,6 +34,7 @@ class PatternParser:
 
     def process_input(
             self,
+            curr_dict,
             prompts,
             text: Optional[str] = None,
             image_data: Optional[Tuple[bytes, str]] = None
@@ -142,7 +143,7 @@ class PatternParser:
         )
 
         config_dict = json.loads(response.choices[0].message.content)
-        print_data(config_dict)
+        # print_data(config_dict)
 
         return config_dict
 

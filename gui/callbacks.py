@@ -158,7 +158,9 @@ class GUIState:
             # NOTE: https://nicegui.io/documentation/section_pages_routing#page_layout
         with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] items-center bg-gradient-to-br from-blue-100 to-indigo-100  justify-end py-0 px-4 m-0'):
             ui.label('Yokostyles - GarmentCode design configurator').classes('mr-auto text-black').style('font-size: 150%; font-weight: 400')
-            ui.label(f"User - {self.user.email}").classes('ml-auto text-black').style('font-size: 120%; font-weight: 400')
+            with ui.label(f"User - {self.user.email}").classes('ml-auto text-black').style('font-size: 120%; font-weight: 400'):
+                ui.button('Logout', on_click=lambda: ui.navigate.to('/logout')).classes("ml-4")
+
 
         # NOTE No ui.left_drawer(), no ui.right_drawer()
         with ui.footer(fixed=False, elevated=True).classes('items-center bg-gradient-to-br from-blue-100 to-indigo-100 justify-center p-0 m-0'):
@@ -578,7 +580,7 @@ class GUIState:
                 ui.label('Describe your design or upload reference images').classes('text-lg font-medium text-gray-700')
 
                 # Messages will be added here
-                o = ui.column().classes('w-full flex-grow overflow-auto gap-4')
+                self.chat_container = ui.column().classes('w-full flex-grow overflow-auto gap-4')
 
             # Input area at the bottom (redesigned)
             with ui.row().classes('w-full items-center gap-3 p-4 bg-white border-t shadow-md'):
@@ -618,7 +620,7 @@ class GUIState:
             prompt_lists = self.message_service.get_messages_by_chat(chat_uid=chat_uid)
             self.tabs.value = self.ui_parse_tab
             self.chat_uid = chat_uid
-            o.clear()
+            self.chat_container.clear()
             for prompt in prompt_lists:
                 self.add_parse_tab_prompt(prompt=prompt.message, isUser=True)
                 self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False)
@@ -638,12 +640,10 @@ class GUIState:
         finally:
             self.spin_dialog.close()
 
-
-
     def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT):
         if isUser:
             if prompt_type == MessageTypeEnum.TEXT:
-                with o:
+                with self.chat_container:
                     with ui.row().classes('w-full justify-end'):
                         with ui.card().classes('max-w-[70%] p-1 bg-blue-100 rounded-xl shadow-sm'):
                             with ui.column().classes('p-3 gap-1'):
@@ -683,11 +683,11 @@ class GUIState:
                 prompts = prompts[len(prompts)-20:] if len(prompts)>20 else prompts
             except Exception as e:
                 prompts = []
+
             params = await loop.run_in_executor(
                 self._async_executor,
-                lambda: self.pattern_parser.process_input(prompts=prompts, text=self.chat_input.value)
+                lambda: self.pattern_parser.process_input(curr_dict=self.pattern_state.design_params, prompts=prompts, text=self.chat_input.value)
             )
-            print(params)
 
             # Update design parameters
             self.toggle_param_update_events(self.ui_design_refs)
@@ -750,7 +750,7 @@ class GUIState:
             loop = asyncio.get_event_loop()
             params = await loop.run_in_executor(
                 self._async_executor,
-                lambda: self.pattern_parser.process_input(prompts=prompts, image_data=(self.image_bytes, self.content_type))
+                lambda: self.pattern_parser.process_input(curr_dict=self.pattern_state.design_params, prompts=prompts, image_data=(self.image_bytes, self.content_type))
             )
 
             # Update design parameters

@@ -142,6 +142,7 @@ def login_page():
         conf_password_input = ui.input('Confirm password', password=True).classes('w-full')
         ui.button('Signup', on_click=signup).classes('w-full')
 
+@ui.page('/logout')
 def logout():
     """Clear JWT token from storage"""
     app.storage.user['jwt_token'] = None
@@ -149,7 +150,7 @@ def logout():
 
 if __name__ in {"__main__", "__mp_main__"}:
     ui.run(
-        title="JWT Auth App",
+        title="Yokostyles Garment",
         storage_secret=os.getenv("UI_STORAGE_KEY"),
         favicon=icon_image_b64,
         port=3000,
