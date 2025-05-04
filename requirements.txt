@@ -1,6 +1,6 @@
 openai
 google.genai
-numpy
+numpy<2.0.0
 scipy
 pyaml
 svgwrite
