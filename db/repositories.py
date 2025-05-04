@@ -54,7 +54,7 @@ class ChatRepository(BaseRepository):
     def update_chat_title(self, title: str, chat_uid: str) -> Chat:
         chat = self.get_chat_by_uid(chat_uid)
         chat.title = title
-        self.db.commtt()
+        self.db.commit()
         self.db.refresh(chat)
         return chat
 
