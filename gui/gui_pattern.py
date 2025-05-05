@@ -311,9 +311,8 @@ class GUIPattern:
             return (not is_strapless) and is_curve or has_hoody
 
 
-
-    def save(self, pack=True, save_pattern: Optional[MetaGarment]=None, file_format='SVG'):
-        """Save current garment design to self.save_path in the specified file_format, with JSON"""
+    def save_for_format(self, pack=True, save_pattern: Optional[MetaGarment]=None, file_format='SVG'):
+        """Save current garment design to self.save_path in the specified file_format, with design_params.yaml"""
 
         # Validate file_format
         valid_formats = ['SVG', 'PNG', 'PDF', 'DXF']
@@ -344,6 +343,16 @@ class GUIPattern:
         self.saved_garment_folder = pattern.serialize(**serialize_kwargs)
         self.saved_garment_folder = Path(self.saved_garment_folder)
 
+        # Generate design_params.yaml
+        yaml_file = self.saved_garment_folder / 'design_params.yaml'
+        with open(yaml_file, 'w') as f:
+            yaml.dump(
+                {'design': self.design_params},
+                f,
+                default_flow_style=False,
+                sort_keys=False
+            )
+
         # Determine the file to include based on file_format
         output_file = None
         if file_format == 'SVG':
@@ -355,19 +364,11 @@ class GUIPattern:
         elif file_format == 'DXF':
             output_file = self.saved_garment_folder / f"{self.sew_pattern.name}_pattern.dxf"
 
-        # Find the JSON file dynamically
-        json_file = None
-        json_files = list(self.saved_garment_folder.glob("*.json"))
-        if json_files:
-            json_file = json_files[0]  # Take the first JSON file found
-        else:
-            print(f"Warning: No JSON file found in {self.saved_garment_folder}")
-
         # Debug: Check file existence
         print(f"Output file: {output_file}, exists: {output_file.exists() if output_file else False}")
-        print(f"JSON file: {json_file}, exists: {json_file.exists() if json_file else False}")
+        print(f"YAML file: {yaml_file}, exists: {yaml_file.exists()}")
 
-        # Create a zip with only the requested file and JSON
+        # Create a zip with only the requested file and YAML
         temp_folder = self.save_path / f"temp_{self.id}"
         temp_folder.mkdir(parents=True, exist_ok=True)
 
@@ -376,10 +377,10 @@ class GUIPattern:
         else:
             print(f"Warning: Output file {output_file} does not exist and will not be included in zip")
 
-        if json_file and json_file.exists():
-            shutil.copy(json_file, temp_folder / json_file.name)
+        if yaml_file.exists():
+            shutil.copy(yaml_file, temp_folder / yaml_file.name)
         else:
-            print(f"Warning: JSON file {json_file} does not exist and will not be included in zip")
+            print(f"Error: YAML file {yaml_file} was not created successfully")
 
         # Debug: List files to be zipped
         print(f"Zipping files: {[item.name for item in temp_folder.iterdir()]}")
@@ -396,7 +397,7 @@ class GUIPattern:
 
         # Clean up saved_garment_folder to remove extra files
         for item in self.saved_garment_folder.iterdir():
-            if item != output_file and item != json_file:
+            if item != output_file and item != yaml_file:
                 if item.is_file():
                     item.unlink()
                 elif item.is_dir():
@@ -407,3 +408,47 @@ class GUIPattern:
         print(f'Success!! {self.sew_pattern.name} saved to {self.saved_garment_folder} as {file_format}')
 
         return archive_path
+    
+
+    def save(self, pack=True, save_pattern: Optional[MetaGarment]=None):
+        """Save current garment design to self.save_path """
+
+        # Save current pattern
+        if save_pattern is None:
+            save_pattern = self.sew_pattern
+
+        pattern = save_pattern.assembly()
+
+        # Save as json file
+        self.saved_garment_folder = pattern.serialize(
+            self.save_path, 
+            to_subfolder=True, 
+            with_3d=False, with_text=False, view_ids=False, 
+            with_printable=True,
+            empty_ok=True
+        )
+
+        self.saved_garment_folder = Path(self.saved_garment_folder)
+        self.body_params.save(self.saved_garment_folder)
+
+        with open(self.saved_garment_folder / 'design_params.yaml', 'w') as f:
+            yaml.dump(
+                {'design': self.design_params}, 
+                f,
+                default_flow_style=False,
+                sort_keys=False
+            )
+
+        # pack
+        if pack: 
+            # Only add geometry if design didn't change since last drape
+            if not self.is_in_3D:
+                self.clear_3d()  # Clean any saved 3D if it's not synced with current design
+            self.saved_garment_archive = Path(shutil.make_archive(
+                self.save_path / '..' / f'{self.saved_garment_folder.name}_{self.id}', 'zip',
+                root_dir=self.save_path
+            ))
+
+        print(f'Success!! {self.sew_pattern.name} saved to {self.saved_garment_folder}')
+
+        return self.saved_garment_archive if pack else self.saved_garment_folder

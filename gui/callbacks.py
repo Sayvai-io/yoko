@@ -1169,6 +1169,11 @@ class GUIState:
 
     def state_download(self, file_format):
         """Download current state of a garment in the specified file_format with JSON"""
-        archive_path = self.pattern_state.save(file_format=file_format, pack=True)
+        archive_path = self.pattern_state.save_for_format(file_format=file_format, pack=True)
         filename = f"Configured_design_{datetime.now().strftime('%y%m%d-%H-%M-%S')}.zip"
         ui.download(archive_path, filename)
+    
+    # def state_download(self):
+    #     """Download current state of a garment"""
+    #     archive_path = self.pattern_state.save()
+    #     ui.download(archive_path, f'Configured_design_{datetime.now().strftime("%y%m%d-%H-%M-%S")}.zip')
