@@ -14,9 +14,6 @@ icon_image_b64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABc
 # Initialize database
 Base.metadata.create_all(bind=engine)
 
-# Set up static file serving for CSS
-app.add_static_files('/css', './assets/css')
-
 # JWT Configuration (same as before)
 JWT_SECRET = os.getenv("JWT_SECRET_KEY")
 JWT_ALGORITHM = "HS256"
@@ -50,8 +47,6 @@ def decode_jwt_token(token: str) -> Optional[dict]:
 @ui.page('/')
 async def main_page(client: Client):
     """Protected main page - checks JWT"""
-    # Load our no-scroll CSS
-    ui.add_head_html('<link rel="stylesheet" href="/css/no-scroll.css">')
 
     if 'jwt_token' not in app.storage.user:
         app.storage.user['jwt_token'] = None
@@ -84,8 +79,6 @@ async def main_page(client: Client):
 @ui.page('/login')
 def login_page():
     """Login page with JWT token generation"""
-    # Load our no-scroll CSS
-    ui.add_head_html('<link rel="stylesheet" href="/css/no-scroll.css">')
 
     if 'jwt_token' not in app.storage.user:
         app.storage.user['jwt_token'] = None
@@ -123,8 +116,6 @@ def login_page():
 @ui.page('/signup')
 def login_page():
     """Signup page"""
-    # Load our no-scroll CSS
-    ui.add_head_html('<link rel="stylesheet" href="/css/no-scroll.css">')
 
     if 'jwt_token' not in app.storage.user:
         app.storage.user['jwt_token'] = None
