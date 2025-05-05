@@ -312,7 +312,7 @@ class GUIPattern:
 
 
 
-    def save(self, pack=True, save_pattern: Optional[MetaGarment]=None, file_format='SVG'):
+    def save_for_format(self, pack=True, save_pattern: Optional[MetaGarment]=None, file_format='SVG'):
         """Save current garment design to self.save_path in the specified file_format, with JSON"""
 
         # Validate file_format
@@ -407,3 +407,46 @@ class GUIPattern:
         print(f'Success!! {self.sew_pattern.name} saved to {self.saved_garment_folder} as {file_format}')
 
         return archive_path
+
+    def save(self, pack=True, save_pattern: Optional[MetaGarment]=None):
+        """Save current garment design to self.save_path """
+
+        # Save current pattern
+        if save_pattern is None:
+            save_pattern = self.sew_pattern
+
+        pattern = save_pattern.assembly()
+
+        # Save as json file
+        self.saved_garment_folder = pattern.serialize(
+            self.save_path, 
+            to_subfolder=True, 
+            with_3d=False, with_text=False, view_ids=False, 
+            with_printable=True,
+            empty_ok=True
+        )
+
+        self.saved_garment_folder = Path(self.saved_garment_folder)
+        self.body_params.save(self.saved_garment_folder)
+
+        with open(self.saved_garment_folder / 'design_params.yaml', 'w') as f:
+            yaml.dump(
+                {'design': self.design_params}, 
+                f,
+                default_flow_style=False,
+                sort_keys=False
+            )
+
+        # pack
+        if pack: 
+            # Only add geometry if design didn't change since last drape
+            if not self.is_in_3D:
+                self.clear_3d()  # Clean any saved 3D if it's not synced with current design
+            self.saved_garment_archive = Path(shutil.make_archive(
+                self.save_path / '..' / f'{self.saved_garment_folder.name}_{self.id}', 'zip',
+                root_dir=self.save_path
+            ))
+
+        print(f'Success!! {self.sew_pattern.name} saved to {self.saved_garment_folder}')
+
+        return self.saved_garment_archive if pack else self.saved_garment_folder
