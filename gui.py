@@ -99,7 +99,7 @@ def login_page():
 
 
         user = user_service.find_user_by_email(email)
-        if not user or user.password != password:
+        if (not user) or (not user_service.verify_user_password(user, password)):
             ui.notify("Invalid credentials", color='negative')
             return
 
@@ -113,6 +113,10 @@ def login_page():
         email_input = ui.input('Email').classes('w-full')
         password_input = ui.input('Password', password=True).classes('w-full')
         ui.button('Login', on_click=authenticate).classes('w-full')
+        with ui.row().classes('justify-center mt-2'):
+            ui.label('Dont have an account? ').classes('text-sm text-gray-600')
+            ui.label('Signup here').classes('text-sm text-blue-600 underline cursor-pointer')\
+                .on('click', lambda _: ui.navigate.to('/signup'))  # Adjust to '/login' or appropriate route
 
 @ui.page('/signup')
 def login_page():
@@ -150,6 +154,12 @@ def login_page():
         password_input = ui.input('Password', password=True).classes('w-full')
         conf_password_input = ui.input('Confirm password', password=True).classes('w-full')
         ui.button('Signup', on_click=signup).classes('w-full')
+
+        with ui.row().classes('justify-center mt-2'):
+            ui.label('Already have an account? ').classes('text-sm text-gray-600')
+            ui.label('Login here').classes('text-sm text-blue-600 underline cursor-pointer')\
+                .on('click', lambda _: ui.navigate.to('/login'))  # Adjust to '/login' or appropriate route
+
 
 @ui.page('/logout')
 def logout():
