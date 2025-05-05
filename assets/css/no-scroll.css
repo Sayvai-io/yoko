@@ -1,4 +1,4 @@
-/* Custom styles to prevent horizontal scrolling */
+/* Custom styles to prevent horizontal scrolling
 body, html {
     overflow-x: hidden !important;
     max-width: 100vw !important;
@@ -14,13 +14,11 @@ body, html {
     box-sizing: border-box;
 }
 
-/* Ensure the sidebar doesn't cause overflow */
 .sidebar {
     overflow-x: hidden;
 }
 
-/* Ensure all content containers respect width limits */
 .w-full {
     max-width: 100vw;
     overflow-x: hidden;
-}
+} */

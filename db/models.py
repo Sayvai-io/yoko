@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 import uuid
 from datetime import datetime
 import enum
-from db.db_config import Base, get_db
+from db.db_config import Base, get_db, engine
 
+Base.metadata.create_all(bind=engine)
 db = next(get_db())
 
 def generate_unique_uid(model, field: str) -> str:
