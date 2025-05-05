@@ -11,12 +11,20 @@ load_dotenv()
 
 api_key = os.getenv("GEMINI_API_KEY")  # Now it loads from .env
 
+call_count = 0  # Global variable to count function calls
 
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
 def prompt_enhancer(text_prompt=None, image_prompt=None, front_view=None, back_view=None):
+
+    global call_count
+    if call_count >= 10:
+        print("Function has been called 10 times. No further calls will be processed.")
+        return None
+    
+    call_count += 1
 
     client = genai.Client(api_key=api_key)
 
@@ -50,69 +58,71 @@ Memory Rule:
 - Use the first input as the reference baseline
 - Compare subsequent 3D model views against this original reference
 - Focus only on major structural differences visible in the 3D space
-- Treat "Shacket" and "openfront shirt" as the same garment type
+- Treat all garment types with equal importance and consideration
 
-Garment Terminology:
-- A Shacket is equivalent to an openfront shirt
-- When the prompt mentions "Shacket", look for an openfront shirt design
-- When the prompt mentions "openfront shirt", treat it as a Shacket
-- Both terms refer to the same garment structure with separated front panels
+Garment Terminology and Types (all equally important and DISTINCT):
+- Regular shirts: Basic shirts with connected front panels
+- Fitted shirts: More tailored shirts with connected front panels, generally closer to the body
+- Open-front garments: Items with separated front panels (Shacket)
+- Bottoms: Pants, skirts, shorts of various styles
+- Outerwear: Jackets, coats, vests
+- Other garments: Dresses, jumpsuits, specialty wear
 
 Goal:
 - Evaluate only major differences in clothing type and structure in 3D
 - Ignore minor details, measurements, and color
 - If upper garment changes are requested, only check upper portion changes
 - Report only significant mismatches that affect the overall 3D appearance
+- If no major structural differences exist, respond with "None"
+- Treat all garment categories with equal importance
 
 3D Visualization Understanding:
 - Recognize that garments are shown in 3D space with front and back views
-- A Shacket/openfront shirt will appear naturally separated in the front
-- Understand that garment panels may have slight gaps due to 3D rendering
-- Natural fabric draping and movement in 3D is expected
+- Understand that different garment types have different expected structures
+- Natural fabric draping and slight gaps are expected in 3D rendering
+- Minor fit variations are normal and should not be flagged
 
 Major Elements to Check:
 - Garment Type: Is it the correct type of clothing in 3D?
-  • Shacket = openfront shirt (these are interchangeable terms)
-  • Regular shirt = closed front shirt
+  • Regular Shirt = standard shirt with connected front panels
+  • Fitted Shirt = more tailored shirt with connected front panels
+  • Open-front garment = shirt with deliberately separated front
   • Other types: jacket, pants, skirt, etc.
 - Basic Structure: Is the fundamental 3D form correct?
-  • For Shackets/openfront shirts: Front panels must be separated
-  • For regular shirts: Front panels should be connected
-  • Front panels separation indicates a Shacket/openfront design
+  • For both regular and fitted shirts: Front panels should be connected
+  • For open-front garments: Front panels are separated
   • The back should always be connected regardless of front style
 - Length Category: Is it in the right length category in 3D space? (short/medium/long)
+  • For skirts: "Long skirt" or "full skirt" means a skirt that covers the entire leg or reaches the ankle
+  • "Full-length skirt" must extend to near ankle length in the 3D model
+  • Midi skirts should reach below the knee but above the ankle
+  • Short/mini skirts should be well above the knee
 - Major Components: Are key 3D structural elements present? (e.g., collar if specified, sleeves if required)
 
 Ignore in 3D View:
-- Panel gaps that are part of the design (especially for Shackets/openfront shirts)
-- Exact measurements and proportions
+- Minor design variations that don't change the fundamental garment type
+- Exact measurements and proportions (except for skirt length categories)
 - Minor fit variations
 - Small styling elements
 - Precise draping patterns
-- Front opening width variations
 - Slight asymmetries due to 3D rendering
 
-Valid 3D Design Variations:
-- Regular shirts (front panels connected)
-- Shackets/openfront shirts (front panels naturally separated)
-- Both are correct depending on the reference
-- Front panel separation indicates a Shacket/openfront design
-- Back panels should always be connected
+Crucial decision rules:
+- Regular shirts and fitted shirts are DIFFERENT garment types but BOTH have connected front panels
+- When the user requests just "shirt", default to checking for a regular shirt with connected front
+- When the user requests "fitted shirt", check for a more tailored shirt with connected front
+- NEVER suggest converting a regular shirt or fitted shirt to an open-front garment unless explicitly requested
+- Only suggest converting to an open-front design if the original reference explicitly asked for it
+- If the 3D model shows connected front panels and the reference requests a shirt, respond with "None"
+- If the prompt mentions "long skirt" or "full skirt" same goes for sleeves and pants check the length against the expected value (0.95). If it does not match, report this as a discrepancy.
+- If no specific length is mentioned (e.g., just "skirt"), do not flag the output as incorrect; accept whatever is shown as correct.
 
 Output Format:
 - If major 3D structural differences exist: Describe only the significant changes needed in one simple sentence
-- If no major differences: respond with "None"
+- If no major differences: respond with "None" (this is crucial to prevent unnecessary iterations)
 - Use clear, concise language focused on 3D structure
 - Focus only on changes that affect the garment's fundamental 3D form
-- Use "Shacket" and "openfront shirt" interchangeably in responses
-
-Example Responses:
-- "Change from regular shirt to Shacket design"
-- "Convert Shacket to regular closed-front shirt"
-- "Change from Shacket to regular shirt with connected front"
-- "Convert full-length sleeves to sleeveless design"
-- "Change pants to a skirt as specified"
-- None (if only minor differences exist)"""
+- "None" (if only minor differences exist or the model is already correct)"""
     ),
     ],
     )
@@ -132,3 +142,4 @@ Example Responses:
         return None
     else:
         return response_text.strip()
+

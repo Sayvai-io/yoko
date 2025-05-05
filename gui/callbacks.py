@@ -194,11 +194,11 @@ class GUIState:
     def def_param_tabs_layout(self):
         """Layout of tabs with parameters"""
         with ui.column(wrap=False).classes(f'h-[{self.h_params_content}vh]'):
-            with ui.tabs() as tabs:
+            with ui.tabs() as self.tabs:
                 self.ui_parse_tab = ui.tab('Parse Design')    # Moved to first position
                 self.ui_design_tab = ui.tab('Design parameters')
                 self.ui_body_tab = ui.tab('Body parameters')
-            with ui.tab_panels(tabs, value=self.ui_parse_tab, animated=True).classes('w-full h-full items-center'):  # Changed default value to parse tab
+            with ui.tab_panels(self.tabs, value=self.ui_parse_tab, animated=True).classes('w-full h-full items-center'):  # Changed default value to parse tab
                 with ui.tab_panel(self.ui_parse_tab).classes('w-full h-full items-center p-0 m-0'):
                     self.def_parse_tab()
                 with ui.tab_panel(self.ui_design_tab).classes('w-full h-full items-center p-0 m-0'):
@@ -915,7 +915,8 @@ class GUIState:
         # Create the upgrade prompt task with error handling to prevent crashes
         try:
             # Use create_task only if the client is still connected
-            self.loop.create_task(self.upgrade_prompt())
+            if not self.tabs.value == 'Design parameters':
+                self.loop.create_task(self.upgrade_prompt())
         except Exception as e:
             print(f"Error creating upgrade_prompt task: {str(e)}")
             # Don't propagate the error - allow rendering to complete normally
