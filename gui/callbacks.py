@@ -27,19 +27,6 @@ import ast
 from .gui_pattern import GUIPattern
 from .pattern_parser import PatternParser
 
-icon_github = """
-    <svg viewbox="0 0 98 96" xmlns="http://www.w3.org/2000/svg">
-    <path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0
-    21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362
-    0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015
-    4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283
-    0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015
-    13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89
-    2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" fill="#fff"/>
-    </svg>
-    """
-icon_arxiv = """<svg id="primary_logo_-_single_color_-_white" data-name="primary logo - single color - white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 246.978 110.119"><path d="M492.976,269.5l24.36-29.89c1.492-1.989,2.2-3.03,1.492-4.723a5.142,5.142,0,0,0-4.481-3.161h0a4.024,4.024,0,0,0-3.008,1.108L485.2,261.094Z" transform="translate(-358.165 -223.27)" fill="#fff"/><path d="M526.273,325.341,493.91,287.058l-.972,1.033-7.789-9.214-7.743-9.357-4.695,5.076a4.769,4.769,0,0,0,.015,6.53L520.512,332.2a3.913,3.913,0,0,0,3.137,1.192,4.394,4.394,0,0,0,4.027-2.818C528.4,328.844,527.6,327.133,526.273,325.341Z" transform="translate(-358.165 -223.27)" fill="#fff"/><path d="M479.215,288.087l6.052,6.485L458.714,322.7a2.98,2.98,0,0,1-2.275,1.194,3.449,3.449,0,0,1-3.241-2.144c-.513-1.231.166-3.15,1.122-4.168l.023-.024.021-.026,24.851-29.448m-.047-1.882-25.76,30.524c-1.286,1.372-2.084,3.777-1.365,5.5a4.705,4.705,0,0,0,4.4,2.914,4.191,4.191,0,0,0,3.161-1.563l27.382-29.007-7.814-8.372Z" transform="translate(-358.165 -223.27)" fill="#fff"/><path d="M427.571,255.154c1.859,0,3.1,1.24,3.985,3.453,1.062-2.213,2.568-3.453,4.694-3.453h14.878a4.062,4.062,0,0,1,4.074,4.074v7.828c0,2.656-1.327,4.074-4.074,4.074-2.656,0-4.074-1.418-4.074-4.074V263.3H436.515a2.411,2.411,0,0,0-2.656,2.745v27.188h10.007c2.658,0,4.074,1.329,4.074,4.074s-1.416,4.074-4.074,4.074h-26.39c-2.659,0-3.986-1.328-3.986-4.074s1.327-4.074,3.986-4.074h8.236V263.3h-7.263c-2.656,0-3.985-1.329-3.985-4.074,0-2.658,1.329-4.074,3.985-4.074Z" transform="translate(-358.165 -223.27)" fill="#fff"/><path d="M539.233,255.154c2.656,0,4.074,1.416,4.074,4.074v34.007h10.1c2.746,0,4.074,1.329,4.074,4.074s-1.328,4.074-4.074,4.074H524.8c-2.656,0-4.074-1.328-4.074-4.074s1.418-4.074,4.074-4.074h10.362V263.3h-8.533c-2.744,0-4.073-1.329-4.073-4.074,0-2.658,1.329-4.074,4.073-4.074Zm4.22-17.615a5.859,5.859,0,1,1-5.819-5.819A5.9,5.9,0,0,1,543.453,237.539Z" transform="translate(-358.165 -223.27)" fill="#fff"/><path d="M605.143,259.228a4.589,4.589,0,0,1-.267,1.594L590,298.9a3.722,3.722,0,0,1-3.721,2.48h-5.933a3.689,3.689,0,0,1-3.808-2.48l-15.055-38.081a3.23,3.23,0,0,1-.355-1.594,4.084,4.084,0,0,1,4.164-4.074,3.8,3.8,0,0,1,3.718,2.656l14.348,36.134,13.9-36.134a3.8,3.8,0,0,1,3.72-2.656A4.084,4.084,0,0,1,605.143,259.228Z" transform="translate(-358.165 -223.27)" fill="#fff"/><path d="M390.61,255.154c5.018,0,8.206,3.312,8.206,8.4v37.831H363.308a4.813,4.813,0,0,1-5.143-4.929V283.427a8.256,8.256,0,0,1,7-8.148l25.507-3.572v-8.4H362.306a4.014,4.014,0,0,1-4.141-4.074c0-2.87,2.143-4.074,4.355-4.074Zm.059,38.081V279.942l-24.354,3.4v9.9Z" transform="translate(-358.165 -223.27)" fill="#fff"/><path d="M448.538,224.52h.077c1,.024,2.236,1.245,2.589,1.669l.023.028.024.026,46.664,50.433a3.173,3.173,0,0,1-.034,4.336l-4.893,5.2-6.876-8.134L446.652,230.4c-1.508-2.166-1.617-2.836-1.191-3.858a3.353,3.353,0,0,1,3.077-2.02m0-1.25a4.606,4.606,0,0,0-4.231,2.789c-.705,1.692-.2,2.88,1.349,5.1l39.493,47.722,7.789,9.214,5.853-6.221a4.417,4.417,0,0,0,.042-6.042L452.169,225.4s-1.713-2.08-3.524-2.124Z" transform="translate(-358.165 -223.27)" fill="#fff"/></svg>"""
-
 theme_colors = Namespace(
     primary='cadetblue',
     secondary='#a33e6c',
@@ -469,7 +456,8 @@ class GUIState:
             ui.spinner('hearts', size='15em').classes('fixed-center')   # NOTE: 'dots' 'ball'
 
     def def_body_file_dialog(self):
-        """ Dialog for loading parameter files (body)"""
+        """ Dialog for loading parameter files (body)
+        """
         async def handle_upload(e: events.UploadEventArguments):
             param_dict = yaml.safe_load(e.content.read())['body']
 
@@ -719,15 +707,6 @@ class GUIState:
                 ).props('accept="image/*"')
                 ui.button('Close', on_click=self.upload_dialog.close)
 
-    def new_chat(self):
-        self.tabs.value = self.ui_parse_tab
-        self.chat_container.clear()
-        self.chat_uid = generate_unique_uid(model=Chat, field="chat_uid")
-        if self.ui_pattern_display:
-            self.ui_pattern_display.source = ''
-            self.ui_pattern_display.update()
-
-
     async def open_previous_chat(self,chat_uid:str, isNew:bool = False):
         try:
             self.spin_dialog.open()
@@ -738,9 +717,10 @@ class GUIState:
             self.tabs.value = self.ui_parse_tab
             self.chat_uid = chat_uid
             self.chat_container.clear()
+            self.toggle_sidebar()
             for prompt in prompt_lists:
                 self.add_parse_tab_prompt(prompt=prompt.message, isUser=True)
-                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(prompt.response))
+                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=prompt.response)
             try:
                 raw_response = prompt_lists[-1].response
                 await self.update_2D_ui(response_json=raw_response)
@@ -751,15 +731,6 @@ class GUIState:
             print(e)
         finally:
             self.spin_dialog.close()
-
-    async def update_2D_ui(self, response_json):
-        params = ast.literal_eval(response_json)
-        self.toggle_param_update_events(self.ui_design_refs)
-        self.pattern_state.set_new_design(params)
-        self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
-        await self.update_pattern_ui_state()
-        self.toggle_param_update_events(self.ui_design_refs)
-
 
     def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT, response_json: str = None):
         if isUser:
@@ -790,6 +761,13 @@ class GUIState:
         with self.chat_container:
             ui.run_javascript("document.querySelector('[data-id=\"chat-container\"]').scrollTop = document.querySelector('[data-id=\"chat-container\"]').scrollHeight;")
 
+    def new_chat(self):
+        self.tabs.value = self.ui_parse_tab
+        self.chat_container.clear()
+        self.chat_uid = generate_unique_uid(model=Chat, field="chat_uid")
+        if self.ui_pattern_display:
+            self.ui_pattern_display.source = ''
+            self.ui_pattern_display.update()
 
     async def handle_chat_input(self):
         """Handle chat input and update pattern"""
@@ -853,6 +831,20 @@ class GUIState:
             # Clear input
             self.last_chat_input = self.chat_input.value
             self.chat_input.value = ''
+
+    async def update_2D_ui(self, response_json):
+        try:
+            self.spin_dialog.open()
+            params = ast.literal_eval(response_json)
+            self.toggle_param_update_events(self.ui_design_refs)
+            self.pattern_state.set_new_design(params)
+            self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
+            await self.update_pattern_ui_state()
+            self.toggle_param_update_events(self.ui_design_refs)
+        except Exception as e:
+            print(e)
+        finally:
+            self.spin_dialog.close()
 
     async def handle_image_upload(self, e: events.UploadEventArguments):
         """Handle uploaded reference images"""
