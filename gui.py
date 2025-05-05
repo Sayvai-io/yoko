@@ -2,16 +2,15 @@ from nicegui import ui, app, Client
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional
-from db.models import User  # Import your models
-from db.services import UserService, MessageService
 from db.db_config import Base, engine, get_db
+from db.models import *  # Import your models
+Base.metadata.create_all(bind=engine)
+from db.services import UserService, MessageService
 from gui.callbacks import GUIState
 import os
 
 icon_image_b64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAACXBIWXMAAAsSAAALEgHS3X78AAAWd0lEQVR4nO2dfYxc1XnGz+587+x49tO7ttf2GK/tpTZ4mlwawF9rbPMRzIeAEGTTUgpSCzSp1EopSImEaNVUVUWTqFFVCQilIk2bokYptKEJASJopXaimoAEIaYYB7telvXudnZ2d762qsd7R6x3Z9c765lz3rnn+Un+gz/Y+5477/vcc9773HOaSqWSIoTYSTN/d0LshQJAiMVQAAixGAoAIRZDASDEYigAhFgMBYAQi6EAEGIxFABCLIYCQIjFUAAIsRgKACEWQwEgxGIoAIRYDAWAEIuhABBiMRQAQiyGAkCIxVAACLEYCgAhFkMBIMRiKACEWAwFgBCLoQAQYjEUAEJsRSn1/wo3KFPhDTaqAAAAAElFTkSuQmCC'
 
-# Initialize database
-Base.metadata.create_all(bind=engine)
 
 # Set up static file serving for CSS
 app.add_static_files('/css', './assets/css')
