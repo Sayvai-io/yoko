@@ -619,6 +619,7 @@ class GUIState:
 
     def refresh_chat_list(self):
         """Refresh the chat list in the sidebar"""
+        print("Refreshing chat list...")
         # Clear the existing chat list
         self.chat_list_container.clear()
 
