@@ -1145,8 +1145,15 @@ class GUIState:
         # Put the new one for display
         self.garm_3d_filename = f'garm_3d_{self.pattern_state.id}_{time.time()}.glb'
         shutil.copy2(path / filename, self.local_path_3d / self.garm_3d_filename)
-
-        self.loop.create_task(self.upgrade_prompt())
+        
+        # Create the upgrade prompt task with error handling to prevent crashes
+        try:
+            # Use create_task only if the client is still connected
+            if not self.tabs.value == 'Design parameters':
+                self.loop.create_task(self.upgrade_prompt())
+        except Exception as e:
+            print(f"Error creating upgrade_prompt task: {str(e)}")
+            # Don't propagate the error - allow rendering to complete normally
 
     # Design buttons updates
     async def design_sample(self):
