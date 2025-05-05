@@ -177,8 +177,14 @@ class GUIState:
                     self.def_pattern_display()
                 with ui.tab_panel(self.ui_3d_tab).classes('w-full h-full items-center p-0 m-0'):
                     self.def_3d_scene()
-
-            ui.button('Download Current Garment', on_click=lambda: self.state_download()).classes('justify-self-end')
+            with ui.row().classes('justify-self-end items-center'):
+                file_format = ui.select(
+                    ['SVG', 'PNG', 'PDF', 'DXF'],
+                    value='SVG',
+                    label='Format'
+                ).classes('w-32')
+                ui.button('Download', on_click=lambda: self.state_download(file_format.value)).classes('justify-self-end')
+            # ui.button('Download Current Garment', on_click=lambda: self.state_download()).classes('justify-self-end')
 
     # !SECTION
     # SECTION -- Parameter menu
@@ -1138,9 +1144,8 @@ class GUIState:
 
         self.toggle_param_update_events(self.ui_design_refs)
 
-    # !SECTION
-
-    def state_download(self):
-        """Download current state of a garment"""
-        archive_path = self.pattern_state.save()
-        ui.download(archive_path, f'Configured_design_{datetime.now().strftime("%y%m%d-%H-%M-%S")}.zip')
+    def state_download(self, file_format):
+        """Download current state of a garment in the specified file_format with JSON"""
+        archive_path = self.pattern_state.save(file_format=file_format, pack=True)
+        filename = f"Configured_design_{datetime.now().strftime('%y%m%d-%H-%M-%S')}.zip"
+        ui.download(archive_path, filename)
