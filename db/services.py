@@ -3,8 +3,22 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import HTTPException, status
 import uuid
-from db.models import User, Chat, Message, File, MessageTypeEnum
+import os
+from db.models import User, Chat, Message, File, MessageTypeEnum, generate_unique_uid
 from db.repositories import *
+from openai import OpenAI
+import fastapi
+import bcrypt
+
+def hash_password(password: str) -> str:
+    """Hash a plain password using bcrypt."""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a hashed password."""
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
 
 class BaseService:
     """Base service class with common functionality"""
@@ -14,7 +28,16 @@ class BaseService:
 
 class UserService(BaseService):
     def add_user(self, email: str, password: str, role: str = "user", subscription_type: str = "free") -> User:
-        return self.user_repo.create_user(email=email, password=password, role=role, subscription_type=subscription_type)
+        hashed_pwd = hash_password(password)
+        return self.user_repo.create_user(
+            email=email,
+            password=hashed_pwd,
+            role=role,
+            subscription_type=subscription_type
+        )
+
+    def verify_user_password(self, user: User, plain_password: str) -> bool:
+        return verify_password(plain_password, user.password)
 
     def find_user_by_id(self, user_id: int) -> Optional[User]:
         return self.user_repo.get_user_by_id(user_id=user_id)
@@ -34,7 +57,28 @@ class ChatService(BaseService):
         self.user_id = user_id
         self.chat_repo = ChatRepository(db=db, user_id=user_id)
 
-    def create_chat(self, title: Optional[str] = "Untitled Chat", chat_uid: Optional[str] = str(uuid.uuid4())) -> Chat:
+    def set_chat_title_with_prompt(self,prompt:str) -> str:
+        system_prompt = (
+            "You are an expert fashion assistant helping tailors and designers. "
+            "Your only task is to generate a concise, professional 2–3 word title for a dress design prompt. "
+            "The title must reflect the core idea, mood, or style described in the prompt. "
+            "Avoid generic words like 'design' or 'dress' unless absolutely essential. "
+            "Never ask for clarification or provide explanations. "
+            "Just return the 2–3 word title only — no other text. "
+            "If you can't get the context, just return 'Untitled Chat'."
+        )
+
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "system", "content": system_prompt}] + [
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return response.choices[0].message.content.strip()
+
+
+    def create_chat(self, title: Optional[str] = None, chat_uid: Optional[str] = generate_unique_uid(model=Chat, field='chat_uid')) -> Chat:
         return self.chat_repo.create_chat(title=title, chat_uid = chat_uid)
 
     def update_chat_title(self, title: str, chat_uid: str) -> Chat:
@@ -69,7 +113,11 @@ class MessageService(BaseService):
     def add_message(self, chat_uid: str, message: str, response: Optional[str] = None, message_type: Optional[MessageTypeEnum] = MessageTypeEnum.TEXT) -> Message:
         chat = self.chat_service.get_chat_by_uid(chat_uid)
         if not chat:
-            chat = self.chat_service.create_chat(chat_uid=chat_uid)
+            print(message)
+            print(type(message))
+            # title = self.chat_service.set_chat_title_with_prompt(prompt = message)
+            title = "Untitled Chat"
+            chat = self.chat_service.create_chat(title=title, chat_uid=chat_uid)
         msg = Message(user_id=self.user_id, chat_id=chat.id, message=message, response=response)
         self.db.add(msg)
         self.db.commit()

@@ -18,3 +18,6 @@ ezdxf
 fastapi==0.115.2
 uvicorn==0.32.0
 pyyaml==6.0.2
+bcrypt
+pyjwt
+sqlalchemy
