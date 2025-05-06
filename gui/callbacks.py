@@ -528,6 +528,17 @@ class GUIState:
         chat.editing = False
         self.refresh_chat_list()
 
+    def format_time(self, dt):
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        chat_date = dt.date()
+
+        if chat_date == today:
+            return "Today"
+        elif chat_date == yesterday:
+            return "Yesterday"
+        return dt.strftime("%b %d")
+
     def def_chat_history(self):
         def start_edit(chat):
             with ui.dialog() as edit_dialog:
@@ -548,16 +559,6 @@ class GUIState:
             ui.update()
 
         chat_history = self.chat_service.get_user_chats()
-        def format_time(dt):
-            today = datetime.now().date()
-            yesterday = today - timedelta(days=1)
-            chat_date = dt.date()
-
-            if chat_date == today:
-                return "Today"
-            elif chat_date == yesterday:
-                return "Yesterday"
-            return dt.strftime("%b %d")
 
         with ui.row().classes("w-full h-screen"):
             # Sidebar
@@ -585,7 +586,7 @@ class GUIState:
                             with ui.row().classes("w-full items-center justify-between gap-3"):
                                 with ui.column().classes("flex-1"):
                                     ui.label(chat.title).classes("text-sm font-medium text-gray-900 truncate")
-                                    ui.label(format_time(chat.created_at)).classes("text-xs text-gray-500")
+                                    ui.label(self.format_time(chat.created_at)).classes("text-xs text-gray-500")
                                 with ui.row().classes("gap-1"):
                                     edit_btn = ui.button(icon='edit').props('dense flat size="sm"').classes("text-gray-600")
                                     edit_btn.on('click', lambda e, c=chat: self.start_edit(c))
@@ -624,18 +625,6 @@ class GUIState:
         # Get updated chat history
         chat_history = self.chat_service.get_user_chats()
 
-        # Recreate the chat list
-        def format_time(dt):
-            today = datetime.now().date()
-            yesterday = today - timedelta(days=1)
-            chat_date = dt.date()
-
-            if chat_date == today:
-                return "Today"
-            elif chat_date == yesterday:
-                return "Yesterday"
-            return dt.strftime("%b %d")
-
         with self.chat_list_container:
             for chat in chat_history:
                 is_selected = self.chat_uid == chat.chat_uid
@@ -650,7 +639,7 @@ class GUIState:
                         with ui.row().classes("w-full items-center justify-between gap-3"):
                             with ui.column().classes("flex-1"):
                                 ui.label(chat.title).classes("text-sm font-medium text-gray-900 truncate")
-                                ui.label(format_time(chat.created_at)).classes("text-xs text-gray-500")
+                                ui.label(self.format_time(chat.created_at)).classes("text-xs text-gray-500")
                             with ui.row().classes("gap-1"):
                                 ui.button(icon='edit', on_click=lambda e, c=chat: self.start_edit(c)).props('dense flat size="sm"').classes("text-gray-600")
                                 ui.button(icon='delete', on_click=lambda e, c=chat: self.delete_chat(c)).props('dense flat size="sm"').classes("text-red-600")
@@ -719,7 +708,7 @@ class GUIState:
             self.chat_container.clear()
             self.toggle_sidebar()
             for prompt in prompt_lists:
-                self.add_parse_tab_prompt(prompt=prompt.message, isUser=True)
+                self.add_parse_tab_prompt(prompt=prompt.message, isUser=True, prompt_type=prompt.message_type)
                 self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=prompt.response)
             try:
                 raw_response = prompt_lists[-1].response
@@ -863,7 +852,7 @@ class GUIState:
             try:
                 prompts = self.message_service.get_messages_by_chat(chat_uid=self.chat_uid)
                 prompts = prompts[len(prompts)-20:] if len(prompts)>20 else prompts
-            except Exception as e:
+            except Exception as err:
                 prompts = []
             # Process through LLM using ThreadPoolExecutor
             loop = asyncio.get_event_loop()
@@ -880,8 +869,8 @@ class GUIState:
             self.toggle_param_update_events(self.ui_design_refs)
             try:
                 self.message_service.add_message(chat_uid=self.chat_uid, message=self.data_url, response=str(params), message_type=MessageTypeEnum.IMAGE)
-            except Exception as e:
-                print(e)
+            except Exception as err:
+                print(err)
             # Add system response
             self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params))
 
