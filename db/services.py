@@ -113,16 +113,15 @@ class MessageService(BaseService):
     def add_message(self, chat_uid: str, message: str, response: Optional[str] = None, message_type: Optional[MessageTypeEnum] = MessageTypeEnum.TEXT) -> Message:
         chat = self.chat_service.get_chat_by_uid(chat_uid)
         if not chat:
-            print(message)
-            print(type(message))
             # title = self.chat_service.set_chat_title_with_prompt(prompt = message)
             title = "Untitled Chat"
             chat = self.chat_service.create_chat(title=title, chat_uid=chat_uid)
-        msg = Message(user_id=self.user_id, chat_id=chat.id, message=message, response=response)
+        msg = Message(user_id=self.user_id, chat_id=chat.id, message=message, response=response, message_type=message_type)
         self.db.add(msg)
         self.db.commit()
         self.db.refresh(msg)
         return msg
+
 
     def get_message_by_uid(self, message_uid: str) -> Optional[Message]:
         return self.db.query(Message).filter_by(message_uid=message_uid, user_id=self.user_id).first()
