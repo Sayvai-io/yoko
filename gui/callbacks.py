@@ -92,7 +92,7 @@ class GUIState:
         self.layout()
 
         self.pattern_parser = PatternParser()
-
+        self.chat_uid = None
     def release(self):
         """Clean-up after the sesssion"""
         self.pattern_state.release()
@@ -601,6 +601,7 @@ class GUIState:
 
     def refresh_chat_list(self):
         """Refresh the chat list in the sidebar"""
+        print("Refreshing chat list...")
         # Clear the existing chat list
         self.chat_list_container.clear()
 
@@ -678,7 +679,8 @@ class GUIState:
                 ).props('accept="image/*"')
                 ui.button('Close', on_click=self.upload_dialog.close)
 
-    async def open_previous_chat(self,chat_uid:str, isNew:bool = False):
+    async def open_previous_chat(self, chat_uid: str, isNew: bool = False):
+        self.chat_uid = chat_uid
         try:
             self.spin_dialog.open()
             if not chat_uid:
@@ -703,6 +705,12 @@ class GUIState:
         finally:
             self.spin_dialog.close()
 
+    async def handle_delete_and_open_previous(self, message_uid: str):
+        self.message_service.delete_message(message_uid=message_uid)
+        
+        await self.open_previous_chat(self.chat_uid)
+
+
     def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT, response_json: str = None, message_uid: str = None):
         if isUser:
             if prompt_type == MessageTypeEnum.TEXT:
@@ -721,24 +729,47 @@ class GUIState:
         else:
             with self.chat_container:
                 with ui.row().classes('w-full justify-start'):
-                    with ui.card().classes('relative max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):  # Make the card relative for absolute children
+                    with ui.card().classes('relative max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):
                         with ui.column().classes('p-3 gap-1'):
                             ui.label(prompt).classes('text-gray-800 text-base')
 
                             with ui.row().classes('w-full items-center justify-end gap-1'):
                                 ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
 
-                                if response_json:
-                                    with ui.icon('visibility').classes('text-gray-600 cursor-pointer').on(
-                                        'click',
-                                        lambda: asyncio.create_task(self.update_2D_ui(response_json=response_json))
-                                    ):
-                                        ui.tooltip("Preview")
-                                if message_uid:
-                                    with ui.icon('add').classes('absolute bottom-1 right-1 text-gray-600 cursor-pointer').on(
-                                        'click', lambda: asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
-                                    ):
-                                        ui.tooltip("Continue From New Chat")
+                                # Dropdown trigger and content
+                                menu_open = ui.element('div').classes('relative')
+
+                                with menu_open:
+                                    def toggle_menu():
+                                        dropdown.visible = not dropdown.visible
+
+                                    ui.icon('more_vert').classes('cursor-pointer text-gray-600').on('click', toggle_menu)
+
+                                    # Dropdown menu with icons
+                                    with ui.column().classes('absolute right-0 top-6 bg-white border rounded-md shadow-md z-50 w-32').style('min-width: 200px').props('v-show="visible"') as dropdown:
+                                        dropdown.visible = False  # Start hidden
+
+                                        if response_json:
+                                            with ui.row().classes('items-center px-4 py-1 cursor-pointer hover:bg-gray-100').on(
+                                                'click', lambda: asyncio.create_task(self.update_2D_ui(response_json=response_json))
+                                            ):
+                                                ui.icon('visibility').classes('text-gray-600')
+                                                ui.label('Preview').classes('ml-2 text-base')
+
+                                        if message_uid:
+                                        
+                                            with ui.row().classes('items-center px-4 py-1 cursor-pointer hover:bg-gray-100').on(
+                                                'click', lambda: asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
+                                            ):
+                                                ui.icon('chat').classes('text-gray-600')
+                                                ui.label('New Chat').classes('ml-2 text-base')
+
+                                            with ui.row().classes('items-center px-4 py-2 cursor-pointer hover:bg-red-50').on(
+                                                'click',
+                                                lambda: asyncio.create_task(self.handle_delete_and_open_previous(message_uid=message_uid))
+                                            ):
+                                                ui.icon('delete').classes('text-red-500')
+                                                ui.label('Delete').classes('ml-2 text-base text-red-500')
 
         # To keep the chat scrolled to the bottom automatically
         with self.chat_container:
