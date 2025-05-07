@@ -729,33 +729,38 @@ class GUIState:
                             with ui.row().classes('w-full items-center justify-end gap-1'):
                                 ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
 
-                                # Create 3-dot icon and dropdown menu
+                                # Dropdown trigger and content
                                 menu_open = ui.element('div').classes('relative')
 
                                 with menu_open:
-                                    dropdown_visible = False  # local state to toggle
-
                                     def toggle_menu():
                                         dropdown.visible = not dropdown.visible
 
                                     ui.icon('more_vert').classes('cursor-pointer text-gray-600').on('click', toggle_menu)
 
-                                    # Dropdown menu (initially hidden)
-                                    with ui.column().classes('absolute right-0 top-6 bg-white border rounded-md shadow-md z-50').props('v-show="visible"') as dropdown:
-                                        dropdown.visible = False  # Menu starts hidden
+                                    # Dropdown menu with icons
+                                    with ui.column().classes('absolute right-0 top-6 bg-white border rounded-md shadow-md z-50 w-32').style('min-width: 200px').props('v-show="visible"') as dropdown:
+                                        dropdown.visible = False  # Start hidden
 
                                         if response_json:
-                                            ui.label('Preview').classes('px-4 py-2 cursor-pointer hover:bg-gray-100').on(
+                                            with ui.row().classes('items-center px-4 py-1 cursor-pointer hover:bg-gray-100').on(
                                                 'click', lambda: asyncio.create_task(self.update_2D_ui(response_json=response_json))
-                                            )
-                                        if message_uid:
-                                            ui.label('New Chat').classes('px-4 py-2 cursor-pointer hover:bg-gray-100').on(
-                                                'click', lambda: asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
-                                            )
-                                            ui.label('Delete').classes('px-4 py-2 cursor-pointer text-red-500 hover:bg-red-50').on(
-                                                'click', lambda: self.delete_message(message_uid=message_uid)
-                                            )
+                                            ):
+                                                ui.icon('visibility').classes('text-gray-600')
+                                                ui.label('Preview').classes('ml-2 text-base')
 
+                                        if message_uid:
+                                            with ui.row().classes('items-center px-4 py-1 cursor-pointer hover:bg-gray-100').on(
+                                                'click', lambda: asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
+                                            ):
+                                                ui.icon('chat').classes('text-gray-600')
+                                                ui.label('New Chat').classes('ml-2 text-base')
+
+                                            with ui.row().classes('items-center px-4 py-1 cursor-pointer hover:bg-red-50').on(
+                                                'click', lambda: self.delete_message(message_uid=message_uid)
+                                            ):
+                                                ui.icon('delete').classes('text-red-500')
+                                                ui.label('Delete').classes('ml-2 text-base text-red-500')
 
         # To keep the chat scrolled to the bottom automatically
         with self.chat_container:
