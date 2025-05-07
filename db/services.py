@@ -126,6 +126,40 @@ class MessageService(BaseService):
     def get_message_by_uid(self, message_uid: str) -> Optional[Message]:
         return self.db.query(Message).filter_by(message_uid=message_uid, user_id=self.user_id).first()
 
+    def copy_messages(self, source_chat_uid: str, dest_chat_uid: str, message_uid: str) -> List[Message]:
+        source_chat = self.chat_service.get_chat_by_uid(source_chat_uid)
+        dest_chat = self.chat_service.create_chat(title="Untitled Chat", chat_uid=dest_chat_uid)
+        if not source_chat:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found")
+
+        # Get the reference message to check its creation time
+        reference_message = self.get_message_by_uid(message_uid)
+        if not reference_message:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reference message not found")
+
+        # Get messages created at or before the reference message
+        source_messages = self.db.query(Message).filter(
+            Message.chat_id == source_chat.id,
+            Message.created_at <= reference_message.created_at
+        ).all()
+
+        copied_messages = []
+        for msg in source_messages:
+            # Create a new message instance with the same content
+            new_msg = Message(
+                user_id=self.user_id,
+                chat_id=dest_chat.id,
+                message=msg.message,
+                response=msg.response,
+                message_type=msg.message_type,
+                created_at=datetime.now()
+            )
+            self.db.add(new_msg)
+            copied_messages.append(new_msg)
+
+        self.db.commit()
+        return copied_messages
+
     def delete_message(self, message_uid: str) -> bool:
         msg = self.get_message_by_uid(message_uid)
         if not msg:

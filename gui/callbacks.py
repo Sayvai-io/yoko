@@ -162,6 +162,7 @@ class GUIState:
         """Toggle visibility of the sidebar"""
         self.sidebar_visible = not self.sidebar_visible
         if self.sidebar_visible:
+            self.refresh_chat_list()
             self.sidebar_column.style('transform: translateX(0%)')
         else:
             self.sidebar_column.style('transform: translateX(-100%)')
@@ -540,24 +541,6 @@ class GUIState:
         return dt.strftime("%b %d")
 
     def def_chat_history(self):
-        def start_edit(chat):
-            with ui.dialog() as edit_dialog:
-                with ui.card():
-                    input_box = ui.input(value=chat.title).classes("text-sm w-full")
-                    with ui.row().classes("gap-2 mt-1"):
-                        ui.button('Save', on_click=lambda: save_edit(chat, input_box, edit_dialog)).props('dense flat color=positive')
-                        ui.button('Cancel', on_click=edit_dialog.close).props('dense flat color=negative')
-            edit_dialog.open()
-
-        def save_edit(chat, input_box, dialog):
-            new_title = input_box.value
-            if new_title.strip():
-                self.chat_service.update_chat_title(chat_uid=chat.chat_uid, title=new_title)
-                chat.title = new_title
-            chat.editing = False
-            dialog.close()
-            ui.update()
-
         chat_history = self.chat_service.get_user_chats()
 
         with ui.row().classes("w-full h-screen"):
@@ -610,8 +593,7 @@ class GUIState:
 
             # If the deleted chat was the current chat, create a new one
             if self.chat_uid == chat_uid:
-                self.chat_uid = generate_unique_uid(model=Chat, field='chat_uid')
-                self.chat_container.clear()
+                self.new_chat()
 
             ui.notify('Chat deleted successfully', type='positive')
         except Exception as e:
@@ -710,7 +692,7 @@ class GUIState:
             self.toggle_sidebar()
             for prompt in prompt_lists:
                 self.add_parse_tab_prompt(prompt=prompt.message, isUser=True, prompt_type=prompt.message_type)
-                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=prompt.response)
+                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=prompt.response, message_uid=prompt.message_uid)
             try:
                 raw_response = prompt_lists[-1].response
                 await self.update_2D_ui(response_json=raw_response)
@@ -722,7 +704,7 @@ class GUIState:
         finally:
             self.spin_dialog.close()
 
-    def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT, response_json: str = None):
+    def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT, response_json: str = None, message_uid: str = None):
         if isUser:
             if prompt_type == MessageTypeEnum.TEXT:
                 with self.chat_container:
@@ -740,16 +722,45 @@ class GUIState:
         else:
             with self.chat_container:
                 with ui.row().classes('w-full justify-start'):
-                    with ui.card().classes('max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):
+                    with ui.card().classes('relative max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):  # Make the card relative for absolute children
                         with ui.column().classes('p-3 gap-1'):
                             ui.label(prompt).classes('text-gray-800 text-base')
+
                             with ui.row().classes('w-full items-center justify-end gap-1'):
                                 ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+
                                 if response_json:
-                                     ui.icon('visibility').classes('text-gray-600 cursor-pointer').on('click',lambda: asyncio.create_task(self.update_2D_ui(response_json=response_json)))
+                                    with ui.icon('visibility').classes('text-gray-600 cursor-pointer').on(
+                                        'click',
+                                        lambda: asyncio.create_task(self.update_2D_ui(response_json=response_json))
+                                    ):
+                                        ui.tooltip("Preview")
+                                if message_uid:
+                                    with ui.icon('add').classes('absolute bottom-1 right-1 text-gray-600 cursor-pointer').on(
+                                        'click', lambda: asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
+                                    ):
+                                        ui.tooltip("Continue From New Chat")
+
         # To keep the chat scrolled to the bottom automatically
         with self.chat_container:
             ui.run_javascript("document.querySelector('[data-id=\"chat-container\"]').scrollTop = document.querySelector('[data-id=\"chat-container\"]').scrollHeight;")
+
+    async def create_new_chat_from_message(self, message_uid: str):
+        try:
+            self.spin_dialog.open()
+            old_chat_uid = self.chat_uid
+            self.new_chat()
+            prompts = self.message_service.copy_messages(source_chat_uid=old_chat_uid, dest_chat_uid = self.chat_uid, message_uid=message_uid)
+            for prompt in prompts:
+                self.add_parse_tab_prompt(prompt=prompt.message, isUser=True, prompt_type=prompt.message_type)
+                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=prompt.response, message_uid=prompt.message_uid)
+            raw_response = prompts[-1].response
+            await self.update_2D_ui(response_json=raw_response)
+        except Exception as e:
+            print(e)
+        finally:
+            self.spin_dialog.close()
+
 
     def new_chat(self):
         self.tabs.value = self.ui_parse_tab
@@ -792,11 +803,11 @@ class GUIState:
             self.toggle_param_update_events(self.ui_design_refs)
 
             try:
-                self.message_service.add_message(chat_uid=self.chat_uid, message=self.chat_input.value, response=str(params))
+                message = self.message_service.add_message(chat_uid=self.chat_uid, message=self.chat_input.value, response=str(params))
             except Exception as e:
                 print(e)
             # Add system message (left-aligned bubble)
-            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params))
+            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params), message_uid=message.message_uid)
 
         except TimeoutError:
             ui.notify('Request timed out. Please try again.', type='negative')
@@ -815,12 +826,9 @@ class GUIState:
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
 
         finally:
-            # Always close the spinner dialog
-            self.spin_dialog.close()
-            # Clear input
-            # Clear input
             self.last_chat_input = self.chat_input.value
             self.chat_input.value = ''
+            self.spin_dialog.close()
 
     async def update_2D_ui(self, response_json):
         try:
@@ -869,11 +877,11 @@ class GUIState:
             await self.update_pattern_ui_state()
             self.toggle_param_update_events(self.ui_design_refs)
             try:
-                self.message_service.add_message(chat_uid=self.chat_uid, message=self.data_url, response=str(params), message_type=MessageTypeEnum.IMAGE)
+                message = self.message_service.add_message(chat_uid=self.chat_uid, message=self.data_url, response=str(params), message_type=MessageTypeEnum.IMAGE)
             except Exception as err:
                 print(err)
             # Add system response
-            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params))
+            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params), message_uid=message.message_uid)
 
             ui.notify(f'Successfully processed {e.name}')
             self.upload_dialog.close()
@@ -1135,7 +1143,7 @@ class GUIState:
         # Put the new one for display
         self.garm_3d_filename = f'garm_3d_{self.pattern_state.id}_{time.time()}.glb'
         shutil.copy2(path / filename, self.local_path_3d / self.garm_3d_filename)
-        
+
         # Create the upgrade prompt task with error handling to prevent crashes
         try:
             # Use create_task only if the client is still connected
