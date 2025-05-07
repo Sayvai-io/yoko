@@ -92,7 +92,7 @@ class GUIState:
         self.layout()
 
         self.pattern_parser = PatternParser()
-
+        self.chat_uid = None
     def release(self):
         """Clean-up after the sesssion"""
         self.pattern_state.release()
@@ -679,7 +679,8 @@ class GUIState:
                 ).props('accept="image/*"')
                 ui.button('Close', on_click=self.upload_dialog.close)
 
-    async def open_previous_chat(self,chat_uid:str, isNew:bool = False):
+    async def open_previous_chat(self, chat_uid: str, isNew: bool = False):
+        self.chat_uid = chat_uid
         try:
             self.spin_dialog.open()
             if not chat_uid:
@@ -703,6 +704,12 @@ class GUIState:
             print(e)
         finally:
             self.spin_dialog.close()
+
+    async def handle_delete_and_open_previous(self, message_uid: str):
+        self.message_service.delete_message(message_uid=message_uid)
+        
+        await self.open_previous_chat(self.chat_uid)
+
 
     def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT, response_json: str = None, message_uid: str = None):
         if isUser:
@@ -750,14 +757,16 @@ class GUIState:
                                                 ui.label('Preview').classes('ml-2 text-base')
 
                                         if message_uid:
+                                        
                                             with ui.row().classes('items-center px-4 py-1 cursor-pointer hover:bg-gray-100').on(
                                                 'click', lambda: asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
                                             ):
                                                 ui.icon('chat').classes('text-gray-600')
                                                 ui.label('New Chat').classes('ml-2 text-base')
 
-                                            with ui.row().classes('items-center px-4 py-1 cursor-pointer hover:bg-red-50').on(
-                                                'click', lambda: self.message_service.delete_message(message_uid=message_uid)
+                                            with ui.row().classes('items-center px-4 py-2 cursor-pointer hover:bg-red-50').on(
+                                                'click',
+                                                lambda: asyncio.create_task(self.handle_delete_and_open_previous(message_uid=message_uid))
                                             ):
                                                 ui.icon('delete').classes('text-red-500')
                                                 ui.label('Delete').classes('ml-2 text-base text-red-500')
