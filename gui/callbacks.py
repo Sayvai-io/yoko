@@ -722,24 +722,40 @@ class GUIState:
         else:
             with self.chat_container:
                 with ui.row().classes('w-full justify-start'):
-                    with ui.card().classes('relative max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):  # Make the card relative for absolute children
+                    with ui.card().classes('relative max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):
                         with ui.column().classes('p-3 gap-1'):
                             ui.label(prompt).classes('text-gray-800 text-base')
 
                             with ui.row().classes('w-full items-center justify-end gap-1'):
                                 ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
 
-                                if response_json:
-                                    with ui.icon('visibility').classes('text-gray-600 cursor-pointer').on(
-                                        'click',
-                                        lambda: asyncio.create_task(self.update_2D_ui(response_json=response_json))
-                                    ):
-                                        ui.tooltip("Preview")
-                                if message_uid:
-                                    with ui.icon('add').classes('absolute bottom-1 right-1 text-gray-600 cursor-pointer').on(
-                                        'click', lambda: asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
-                                    ):
-                                        ui.tooltip("Continue From New Chat")
+                                # Create 3-dot icon and dropdown menu
+                                menu_open = ui.element('div').classes('relative')
+
+                                with menu_open:
+                                    dropdown_visible = False  # local state to toggle
+
+                                    def toggle_menu():
+                                        dropdown.visible = not dropdown.visible
+
+                                    ui.icon('more_vert').classes('cursor-pointer text-gray-600').on('click', toggle_menu)
+
+                                    # Dropdown menu (initially hidden)
+                                    with ui.column().classes('absolute right-0 top-6 bg-white border rounded-md shadow-md z-50').props('v-show="visible"') as dropdown:
+                                        dropdown.visible = False  # Menu starts hidden
+
+                                        if response_json:
+                                            ui.label('Preview').classes('px-4 py-2 cursor-pointer hover:bg-gray-100').on(
+                                                'click', lambda: asyncio.create_task(self.update_2D_ui(response_json=response_json))
+                                            )
+                                        if message_uid:
+                                            ui.label('New Chat').classes('px-4 py-2 cursor-pointer hover:bg-gray-100').on(
+                                                'click', lambda: asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
+                                            )
+                                            ui.label('Delete').classes('px-4 py-2 cursor-pointer text-red-500 hover:bg-red-50').on(
+                                                'click', lambda: self.delete_message(message_uid=message_uid)
+                                            )
+
 
         # To keep the chat scrolled to the bottom automatically
         with self.chat_container:
