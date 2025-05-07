@@ -133,7 +133,6 @@ class PatternParser:
 
         if not user_messages:
             raise ValueError("Either text or image_file must be provided.")
-        print(user_messages)
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "system", "content": system_prompt}] + [
