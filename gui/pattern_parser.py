@@ -49,6 +49,7 @@ class PatternParser:
             Dictionary of pattern parameters
         """
         try:
+            self.curr_dict = str(curr_dict)
             # Store inputs for reference
             if text:
                 self._save_text_input(text)
@@ -99,15 +100,14 @@ class PatternParser:
             if prompt.message_type == MessageTypeEnum.IMAGE:
                 default_text = "From the provided image and template, please generate a parameter configuration for the garment."
                 user_messages.append({"type": "text", "text": default_text})
-                base64_image = encode_image(image_data)
                 user_messages.append(
                     {
                         "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{prompt.message}"},
+                        "image_url": {"url": prompt.message},
                     }
                 )
             elif prompt.message_type == MessageTypeEnum.TEXT:
-                user_messages.append({"type": "text", "text": text})
+                user_messages.append({"type": "text", "text": prompt.message})
 
         user_messages.append({
             "type": "text",
@@ -133,7 +133,7 @@ class PatternParser:
 
         if not user_messages:
             raise ValueError("Either text or image_file must be provided.")
-
+        print(user_messages)
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "system", "content": system_prompt}] + [

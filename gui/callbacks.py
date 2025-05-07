@@ -146,11 +146,11 @@ class GUIState:
 
             # Toggle button for sidebar (fixed position - moved to left side)
             self.sidebar_toggle_btn = ui.button(icon='chat', on_click=self.toggle_sidebar).classes(f'fixed top-[{self.h_header + 1}vh] left-2 z-20').props('round color=primary')
-            
+
             with ui.row(wrap=False).classes(f'w-full h-[{self.h_params_content}dvh] p-0 m-0 '):
                 self.def_param_tabs_layout()
                 self.view_tabs_layout()
-            
+
             # Overall wrapping
             # NOTE: https://nicegui.io/documentation/section_pages_routing#page_layout
         with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] items-center bg-gradient-to-br from-blue-100 to-indigo-100  justify-end py-0 px-4 m-0'):
@@ -177,8 +177,14 @@ class GUIState:
                     self.def_pattern_display()
                 with ui.tab_panel(self.ui_3d_tab).classes('w-full h-full items-center p-0 m-0'):
                     self.def_3d_scene()
-
-            ui.button('Download Current Garment', on_click=lambda: self.state_download()).classes('justify-self-end')
+            with ui.row().classes('justify-self-end items-center'):
+                file_format = ui.select(
+                    ['SVG', 'PNG', 'PDF', 'DXF'],
+                    value='SVG',
+                    label='Format'
+                ).classes('w-32')
+                ui.button('Download', on_click=lambda: self.state_download(file_format.value)).classes('justify-self-end')
+            # ui.button('Download Current Garment', on_click=lambda: self.state_download()).classes('justify-self-end')
 
     # !SECTION
     # SECTION -- Parameter menu
@@ -522,6 +528,17 @@ class GUIState:
         chat.editing = False
         self.refresh_chat_list()
 
+    def format_time(self, dt):
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        chat_date = dt.date()
+
+        if chat_date == today:
+            return "Today"
+        elif chat_date == yesterday:
+            return "Yesterday"
+        return dt.strftime("%b %d")
+
     def def_chat_history(self):
         def start_edit(chat):
             with ui.dialog() as edit_dialog:
@@ -542,16 +559,6 @@ class GUIState:
             ui.update()
 
         chat_history = self.chat_service.get_user_chats()
-        def format_time(dt):
-            today = datetime.now().date()
-            yesterday = today - timedelta(days=1)
-            chat_date = dt.date()
-
-            if chat_date == today:
-                return "Today"
-            elif chat_date == yesterday:
-                return "Yesterday"
-            return dt.strftime("%b %d")
 
         with ui.row().classes("w-full h-screen"):
             # Sidebar
@@ -559,7 +566,7 @@ class GUIState:
                 # Header
                 with ui.row().classes("w-full p-4 border-b items-center justify-between"):
                     ui.label("Chat History").classes("text-lg font-semibold")
-                    with ui.button(icon="add", color=None).classes("text-gray-500 hover:bg-gray-100 rounded-full p-1"):
+                    with ui.button(icon="add", color=None, on_click=lambda : self.new_chat()).classes("text-gray-500 hover:bg-gray-100 rounded-full p-1"):
                         ui.tooltip("New Chat")
 
                 # Search bar
@@ -579,11 +586,11 @@ class GUIState:
                             with ui.row().classes("w-full items-center justify-between gap-3"):
                                 with ui.column().classes("flex-1"):
                                     ui.label(chat.title).classes("text-sm font-medium text-gray-900 truncate")
-                                    ui.label(format_time(chat.created_at)).classes("text-xs text-gray-500")
+                                    ui.label(self.format_time(chat.created_at)).classes("text-xs text-gray-500")
                                 with ui.row().classes("gap-1"):
                                     edit_btn = ui.button(icon='edit').props('dense flat size="sm"').classes("text-gray-600")
                                     edit_btn.on('click', lambda e, c=chat: self.start_edit(c))
-                                    
+
                                     delete_btn = ui.button(icon='delete').props('dense flat size="sm"').classes("text-red-600")
                                     delete_btn.on('click', lambda e, c=chat: self.delete_chat(c))
 
@@ -597,15 +604,15 @@ class GUIState:
         try:
             # Delete the chat from the database
             self.chat_service.delete_chat(chat_uid)
-            
+
             # Refresh the chat list
             self.refresh_chat_list()
-            
+
             # If the deleted chat was the current chat, create a new one
             if self.chat_uid == chat_uid:
                 self.chat_uid = generate_unique_uid(model=Chat, field='chat_uid')
                 self.chat_container.clear()
-            
+
             ui.notify('Chat deleted successfully', type='positive')
         except Exception as e:
             ui.notify(f'Failed to delete chat: {str(e)}', type='negative')
@@ -614,22 +621,10 @@ class GUIState:
         """Refresh the chat list in the sidebar"""
         # Clear the existing chat list
         self.chat_list_container.clear()
-        
+
         # Get updated chat history
         chat_history = self.chat_service.get_user_chats()
-        
-        # Recreate the chat list
-        def format_time(dt):
-            today = datetime.now().date()
-            yesterday = today - timedelta(days=1)
-            chat_date = dt.date()
 
-            if chat_date == today:
-                return "Today"
-            elif chat_date == yesterday:
-                return "Yesterday"
-            return dt.strftime("%b %d")
-            
         with self.chat_list_container:
             for chat in chat_history:
                 is_selected = self.chat_uid == chat.chat_uid
@@ -644,7 +639,7 @@ class GUIState:
                         with ui.row().classes("w-full items-center justify-between gap-3"):
                             with ui.column().classes("flex-1"):
                                 ui.label(chat.title).classes("text-sm font-medium text-gray-900 truncate")
-                                ui.label(format_time(chat.created_at)).classes("text-xs text-gray-500")
+                                ui.label(self.format_time(chat.created_at)).classes("text-xs text-gray-500")
                             with ui.row().classes("gap-1"):
                                 ui.button(icon='edit', on_click=lambda e, c=chat: self.start_edit(c)).props('dense flat size="sm"').classes("text-gray-600")
                                 ui.button(icon='delete', on_click=lambda e, c=chat: self.delete_chat(c)).props('dense flat size="sm"').classes("text-red-600")
@@ -659,7 +654,7 @@ class GUIState:
                     ui.button('Cancel', on_click=delete_dialog.close).props('flat')
                     ui.button('Delete', on_click=lambda: (self.handle_chat_deletion(chat.chat_uid), delete_dialog.close())).props('color=negative')
         delete_dialog.open()
-        
+
     def def_parse_tab(self):
         """Define content for Parse Design tab"""
         # Main container without scroll
@@ -670,7 +665,7 @@ class GUIState:
                 ui.label('Describe your design or upload reference images').classes('text-lg font-medium text-gray-700')
 
                 # Messages will be added here
-                self.chat_container = ui.column().classes('w-full flex-grow overflow-auto gap-4')
+                self.chat_container = ui.column().classes('w-full h-[62vh] flex-grow overflow-auto gap-4').props('data-id=chat-container')
 
             # Input area at the bottom (redesigned)
             with ui.row().classes('w-full items-center gap-3 p-4 bg-white border-t shadow-md'):
@@ -711,17 +706,13 @@ class GUIState:
             self.tabs.value = self.ui_parse_tab
             self.chat_uid = chat_uid
             self.chat_container.clear()
+            self.toggle_sidebar()
             for prompt in prompt_lists:
-                self.add_parse_tab_prompt(prompt=prompt.message, isUser=True)
-                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False)
+                self.add_parse_tab_prompt(prompt=prompt.message, isUser=True, prompt_type=prompt.message_type)
+                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=prompt.response)
             try:
                 raw_response = prompt_lists[-1].response
-                params = ast.literal_eval(raw_response)
-                self.toggle_param_update_events(self.ui_design_refs)
-                self.pattern_state.set_new_design(params)
-                self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
-                await self.update_pattern_ui_state()
-                self.toggle_param_update_events(self.ui_design_refs)
+                await self.update_2D_ui(response_json=raw_response)
             except (ValueError, SyntaxError) as e:
                 print(f"Invalid dict format: {e}")
 
@@ -730,7 +721,7 @@ class GUIState:
         finally:
             self.spin_dialog.close()
 
-    def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT):
+    def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT, response_json: str = None):
         if isUser:
             if prompt_type == MessageTypeEnum.TEXT:
                 with self.chat_container:
@@ -738,7 +729,7 @@ class GUIState:
                         with ui.card().classes('max-w-[70%] p-1 bg-blue-100 rounded-xl shadow-sm'):
                             with ui.column().classes('p-3 gap-1'):
                                 ui.label(prompt).classes('text-gray-900 text-base')
-                                ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500 text-right')
+                                ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
             elif prompt_type == MessageTypeEnum.IMAGE:
                 with self.chat_container:
                     with ui.card().classes('w-3/4 ml-auto bg-gray-200 rounded-lg'):
@@ -751,8 +742,21 @@ class GUIState:
                     with ui.card().classes('max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):
                         with ui.column().classes('p-3 gap-1'):
                             ui.label(prompt).classes('text-gray-800 text-base')
-                            ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500 text-left')
+                            with ui.row().classes('w-full items-center justify-end gap-1'):
+                                ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+                                if response_json:
+                                     ui.icon('visibility').classes('text-gray-600 cursor-pointer').on('click',lambda: asyncio.create_task(self.update_2D_ui(response_json=response_json)))
+        # To keep the chat scrolled to the bottom automatically
+        with self.chat_container:
+            ui.run_javascript("document.querySelector('[data-id=\"chat-container\"]').scrollTop = document.querySelector('[data-id=\"chat-container\"]').scrollHeight;")
 
+    def new_chat(self):
+        self.tabs.value = self.ui_parse_tab
+        self.chat_container.clear()
+        self.chat_uid = generate_unique_uid(model=Chat, field="chat_uid")
+        if self.ui_pattern_display:
+            self.ui_pattern_display.source = ''
+            self.ui_pattern_display.update()
 
     async def handle_chat_input(self):
         """Handle chat input and update pattern"""
@@ -791,7 +795,7 @@ class GUIState:
             except Exception as e:
                 print(e)
             # Add system message (left-aligned bubble)
-            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False)
+            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params))
 
         except TimeoutError:
             ui.notify('Request timed out. Please try again.', type='negative')
@@ -817,6 +821,20 @@ class GUIState:
             self.last_chat_input = self.chat_input.value
             self.chat_input.value = ''
 
+    async def update_2D_ui(self, response_json):
+        try:
+            self.spin_dialog.open()
+            params = ast.literal_eval(response_json)
+            self.toggle_param_update_events(self.ui_design_refs)
+            self.pattern_state.set_new_design(params)
+            self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
+            await self.update_pattern_ui_state()
+            self.toggle_param_update_events(self.ui_design_refs)
+        except Exception as e:
+            print(e)
+        finally:
+            self.spin_dialog.close()
+
     async def handle_image_upload(self, e: events.UploadEventArguments):
         """Handle uploaded reference images"""
         try:
@@ -834,7 +852,7 @@ class GUIState:
             try:
                 prompts = self.message_service.get_messages_by_chat(chat_uid=self.chat_uid)
                 prompts = prompts[len(prompts)-20:] if len(prompts)>20 else prompts
-            except Exception as e:
+            except Exception as err:
                 prompts = []
             # Process through LLM using ThreadPoolExecutor
             loop = asyncio.get_event_loop()
@@ -851,10 +869,10 @@ class GUIState:
             self.toggle_param_update_events(self.ui_design_refs)
             try:
                 self.message_service.add_message(chat_uid=self.chat_uid, message=self.data_url, response=str(params), message_type=MessageTypeEnum.IMAGE)
-            except Exception as e:
-                print(e)
+            except Exception as err:
+                print(err)
             # Add system response
-            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False)
+            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params))
 
             ui.notify(f'Successfully processed {e.name}')
             self.upload_dialog.close()
@@ -1116,8 +1134,15 @@ class GUIState:
         # Put the new one for display
         self.garm_3d_filename = f'garm_3d_{self.pattern_state.id}_{time.time()}.glb'
         shutil.copy2(path / filename, self.local_path_3d / self.garm_3d_filename)
-
-        self.loop.create_task(self.upgrade_prompt())
+        
+        # Create the upgrade prompt task with error handling to prevent crashes
+        try:
+            # Use create_task only if the client is still connected
+            if not self.tabs.value == 'Design parameters':
+                self.loop.create_task(self.upgrade_prompt())
+        except Exception as e:
+            print(f"Error creating upgrade_prompt task: {str(e)}")
+            # Don't propagate the error - allow rendering to complete normally
 
     # Design buttons updates
     async def design_sample(self):
@@ -1138,9 +1163,13 @@ class GUIState:
 
         self.toggle_param_update_events(self.ui_design_refs)
 
-    # !SECTION
-
-    def state_download(self):
-        """Download current state of a garment"""
-        archive_path = self.pattern_state.save()
-        ui.download(archive_path, f'Configured_design_{datetime.now().strftime("%y%m%d-%H-%M-%S")}.zip')
+    def state_download(self, file_format):
+        """Download current state of a garment in the specified file_format with JSON"""
+        archive_path = self.pattern_state.save_for_format(file_format=file_format, pack=True)
+        filename = f"Configured_design_{datetime.now().strftime('%y%m%d-%H-%M-%S')}.zip"
+        ui.download(archive_path, filename)
+    
+    # def state_download(self):
+    #     """Download current state of a garment"""
+    #     archive_path = self.pattern_state.save()
+    #     ui.download(archive_path, f'Configured_design_{datetime.now().strftime("%y%m%d-%H-%M-%S")}.zip')

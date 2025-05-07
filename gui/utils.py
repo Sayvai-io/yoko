@@ -226,8 +226,15 @@ Generate responses based on the specific clothing parameters requested in the in
 - Determine which garment component(s) the input refers to (e.g., sleeves, collar, waistband)
 - Ensure that every output contains the meta section if an upper garment is requested
 - If the meta[x]['v'] is none, then remove the x data from meta
-- For openfront shirts, ensure both meta['upper']['v'] = 'FittedShirt' and shirt['openfront']['v'] = True are set
+- For shirt types, follow these specific rules:
+  * Regular Shirt: meta['upper']['v'] = 'Shirt' and shirt['openfront']['v'] = False
+  * Fitted Shirt: meta['upper']['v'] = 'FittedShirt' and shirt['openfront']['v'] = False 
+  * Open-front Shirt/Shacket: meta['upper']['v'] = 'FittedShirt' and shirt['openfront']['v'] = True
+  If the input is "long skirt", set the meta['bottom']['v'] to 'PencilSkirt' and skirt['length']['v'] to 0.95.
+  If the input is just "skirt", return only the default skirt type without any additional types.
 - If multiple garments are requested (e.g., a full outfit), return all corresponding sections
+ Do not include any upper garment in the output unless explicitly requested in the input.
+ If the user requests just lower garments , just give the lower garments  without adding any upper garment and vise varsa.
 
 2. Preserve Hierarchical Structure:
 - Maintain the exact hierarchical structure of the configuration dictionary
@@ -237,7 +244,7 @@ Generate responses based on the specific clothing parameters requested in the in
 3. Modify Only 'v' (Value) Fields:
 - Modify only the v fields based on input while keeping the structure intact
 - Ensure v values are dynamically adjusted based on user input and predefined constraints
-- For openfront designs, always set shirt.openfront.v = True
+- Treat "shirt", "fitted shirt", and "open-front" designs as distinct garment types
 
 4. Adhere to Specified Ranges:
 - Ensure all modifications strictly follow the predefined 'range' constraints for each parameter
@@ -254,15 +261,22 @@ Generate responses based on the specific clothing parameters requested in the in
 
 7. Response Behavior:
 - For upper garments, always include the meta section
-- For openfront designs, ensure both meta and shirt sections are included with correct values
+- Handle different shirt types correctly:
+  * For "shirt" requests: Set meta['upper']['v'] = 'Shirt' and shirt['openfront']['v'] = False
+  * For "fitted shirt" requests: Set meta['upper']['v'] = 'FittedShirt' and shirt['openfront']['v'] = False
+  * For "open-front" or "shacket" requests: Set meta['upper']['v'] = 'FittedShirt' and shirt['openfront']['v'] = True
 - If there is change from the upper portion of the garment, then the lower portion should stay the same
 - If a single garment (e.g., "shirt") is requested, return only its corresponding section with meta
 - If multiple garments are requested, return only those sections while maintaining structure
 
 8. Special Parameter Handling:
-- For openfront shirts: Always set shirt.openfront.v = True and meta.upper.v = 'FittedShirt'
+- Never automatically change a regular shirt or fitted shirt to an open-front design unless explicitly requested
 - For strapless designs: Ensure shirt.strapless.v is properly set
 - For asymmetric designs: Handle left/right configurations appropriately
+- For skirt length: When processing "long skirt" or "full skirt" requests:
+  * Set meta['bottom']['v'] to an appropriate skirt type 
+  * when asked for full skirt or long skirt (skirt of any type)  set the skirt length parameter to 0.95 (maximum length) to ensure full coverage
+  * Never use default skirt length values when "long" or "full" is specified in the input
 
 9. Output Requirements:
 - Generate only the modified configuration dictionary
