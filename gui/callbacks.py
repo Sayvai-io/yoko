@@ -757,7 +757,7 @@ class GUIState:
                                                 ui.label('New Chat').classes('ml-2 text-base')
 
                                             with ui.row().classes('items-center px-4 py-1 cursor-pointer hover:bg-red-50').on(
-                                                'click', lambda: self.delete_message(message_uid=message_uid)
+                                                'click', lambda: self.message_service.delete_message(message_uid=message_uid)
                                             ):
                                                 ui.icon('delete').classes('text-red-500')
                                                 ui.label('Delete').classes('ml-2 text-base text-red-500')
