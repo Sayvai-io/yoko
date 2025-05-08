@@ -823,6 +823,7 @@ class GUIState:
             self.pattern_state.set_new_design(params)
             self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
             await self.update_pattern_ui_state()
+            
             self.toggle_param_update_events(self.ui_design_refs)
 
             try:
@@ -849,8 +850,9 @@ class GUIState:
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
 
         try:
+            print("Updating 3D scene...")
             self.loop = asyncio.get_event_loop()
-            await self.loop.run_in_executor(self._async_executor, self._sync_update_3d)
+            await self.update_3d_scene()
         except Exception as e:
             print(e)
 
