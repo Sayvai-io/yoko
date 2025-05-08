@@ -856,6 +856,12 @@ class GUIState:
                     with ui.column().classes('p-3 gap-1'):
                         ui.label("Sorry, I couldn't process that input. Please try again.").classes('text-gray-800')
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+        
+        try:
+            self.loop = asyncio.get_event_loop()
+            await self.loop.run_in_executor(self._async_executor, self._sync_update_3d)
+        except Exception as e:
+            print(e)
 
         finally:
             self.last_chat_input = self.chat_input.value
@@ -925,6 +931,12 @@ class GUIState:
                     with ui.column().classes('p-3 gap-1'):
                         ui.label("Sorry, I couldn't process that image. Please try again.").classes('text-gray-800')
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+
+        try:
+            self.loop = asyncio.get_event_loop()
+            await self.loop.run_in_executor(self._async_executor, self._sync_update_3d)
+        except Exception as e:
+            print(e)
         finally:
             self.spin_dialog.close()
 
