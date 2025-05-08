@@ -118,7 +118,7 @@ class GUIState:
         """Overall page layout"""
 
         # as % of viewport width/height
-        self.h_header = 5
+        self.h_header = 6
         self.h_params_content = 88
         self.h_garment_display = 74
         self.w_garment_display = 65
@@ -143,19 +143,31 @@ class GUIState:
                     ui.label("Chat History").classes("text-lg font-semibold")
                 self.def_chat_history()
 
-            # Toggle button for sidebar (fixed position - moved to left side)
-            self.sidebar_toggle_btn = ui.button(icon='chat', on_click=self.toggle_sidebar).classes(f'fixed top-[{self.h_header + 1}vh] left-2 z-20').props('round color=primary')
-
             with ui.row(wrap=False).classes(f'w-full h-[{self.h_params_content}dvh] p-0 m-0 '):
                 self.def_param_tabs_layout()
                 self.view_tabs_layout()
 
             # Overall wrapping
             # NOTE: https://nicegui.io/documentation/section_pages_routing#page_layout
-        with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] items-center bg-gradient-to-br from-blue-100 to-indigo-100  justify-end py-0 px-4 m-0'):
-            ui.label('Yokostyles - GarmentCode design configurator').classes('mr-auto text-black').style('font-size: 150%; font-weight: 400')
-            with ui.label(f"User - {self.user.email}").classes('ml-auto text-black').style('font-size: 120%; font-weight: 400'):
-                ui.button('Logout', on_click=lambda: ui.navigate.to('/logout')).classes("ml-4")
+        with ui.header(elevated=True, fixed=False).classes(
+    f'h-[{self.h_header}vh] bg-gradient-to-br from-blue-100 to-indigo-100 justify-between items-center px-6 py-2'
+):
+    # Sidebar toggle button (transparent)
+            self.sidebar_toggle_btn = ui.button(
+                icon='menu',
+                on_click=self.toggle_sidebar
+            ).props('round flat').classes('bg-transparent')
+
+            # Title
+            ui.label('Yokostyles - GarmentCode Configurator')\
+                .classes('text-xl font-semibold text-gray-800')
+
+            # Profile avatar + dropdown
+            with ui.avatar(icon='person', color='primary', size='md').props('clickable') as avatar:
+                with ui.menu():
+                    ui.label(f"Signed in as {self.user.email}").classes("text-sm text-gray-600 px-4 py-2")
+                    ui.separator()
+                    ui.menu_item("Logout", on_click=lambda: ui.navigate.to('/logout'))
 
     def toggle_sidebar(self):
         """Toggle visibility of the sidebar"""
@@ -206,32 +218,19 @@ class GUIState:
     def def_body_tab(self):
 
         # Set of buttons
-        with ui.row():
-            ui.button('Upload', on_click=self.ui_body_dialog.open)
+        # with ui.row():
+        #     ui.button('Upload', on_click=self.ui_body_dialog.open)
 
         self.ui_active_body_refs = {}
         self.ui_passive_body_refs = {}
-        with ui.scroll_area().classes('w-full h-full p-0 m-0'): # NOTE: p-0 m-0 gap-0 dont' seem to have effect
-            body = self.pattern_state.body_params
-            for param in body:
-                param_name = param.replace('_', ' ').capitalize()
-                elem = ui.number(
-                        label=param_name,
-                        value=str(body[param]),
-                        format='%.2f',
-                        precision=2,
-                        step=0.5,
-                ).classes('text-[0.85rem]')
+        with ui.column().classes('w-full h-full items-center justify-center gap-2'):
+            ui.label("Create Your Own Avatar").classes('text-2xl font-bold mt-4')
+            ui.label("Coming Soon").classes('text-lg text-gray-500')
 
-                if param[0] == '_':  # Info elements for calculatable parameters
-                    elem.disable()
-                    self.ui_passive_body_refs[param] = elem
-                else:   # active elements accepting input
-                    # NOTE: e.sender == UI object, e.value == new value
-                    elem.on_value_change(lambda e, dic=body, param=param: self.update_pattern_ui_state(
-                        dic, param, e.value, body_param=True
-                    ))
-                    self.ui_active_body_refs[param] = elem
+    # def def_body_tab(self):
+    #     with ui.column().classes('w-full h-full items-center justify-center gap-2'):
+    #         ui.label("Create Your Own Avatar").classes('text-2xl font-bold mt-4')
+    #         ui.label("Coming Soon").classes('text-lg text-gray-500')
 
     def def_flat_design_subtab(self, ui_elems, design_params, use_collapsible=False):
         """Group of design parameters"""
@@ -763,6 +762,12 @@ class GUIState:
                                                 ui.icon('chat').classes('text-gray-600')
                                                 ui.label('New Chat').classes('text-base')
 
+                                            # with ui.row().classes('items-center px-4 py-2 cursor-pointer hover:bg-red-50').on(
+                                            #     'click',
+                                            #     lambda: asyncio.create_task(self.handle_delete_and_open_previous(message_uid=message_uid))
+                                            # ):
+                                            #     ui.icon('delete').classes('text-red-500')
+                                            #     ui.label('Delete').classes('ml-2 text-base text-red-500')
 
         # To keep the chat scrolled to the bottom automatically
         with self.chat_container:
