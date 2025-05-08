@@ -764,12 +764,12 @@ class GUIState:
                                                 ui.icon('chat').classes('text-gray-600')
                                                 ui.label('New Chat').classes('ml-2 text-base')
 
-                                            with ui.row().classes('items-center px-4 py-2 cursor-pointer hover:bg-red-50').on(
-                                                'click',
-                                                lambda: asyncio.create_task(self.handle_delete_and_open_previous(message_uid=message_uid))
-                                            ):
-                                                ui.icon('delete').classes('text-red-500')
-                                                ui.label('Delete').classes('ml-2 text-base text-red-500')
+                                            # with ui.row().classes('items-center px-4 py-2 cursor-pointer hover:bg-red-50').on(
+                                            #     'click',
+                                            #     lambda: asyncio.create_task(self.handle_delete_and_open_previous(message_uid=message_uid))
+                                            # ):
+                                            #     ui.icon('delete').classes('text-red-500')
+                                            #     ui.label('Delete').classes('ml-2 text-base text-red-500')
 
         # To keep the chat scrolled to the bottom automatically
         with self.chat_container:
