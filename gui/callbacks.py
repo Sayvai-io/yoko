@@ -92,7 +92,6 @@ class GUIState:
         self.layout()
 
         self.pattern_parser = PatternParser()
-        self.chat_uid = None
     def release(self):
         """Clean-up after the sesssion"""
         self.pattern_state.release()
@@ -680,7 +679,6 @@ class GUIState:
                 ui.button('Close', on_click=self.upload_dialog.close)
 
     async def open_previous_chat(self, chat_uid: str, isNew: bool = False):
-        self.chat_uid = chat_uid
         try:
             self.spin_dialog.open()
             if not chat_uid:
@@ -704,11 +702,6 @@ class GUIState:
             print(e)
         finally:
             self.spin_dialog.close()
-
-    async def handle_delete_and_open_previous(self, message_uid: str):
-        self.message_service.delete_message(message_uid=message_uid)
-        
-        await self.open_previous_chat(self.chat_uid)
 
 
     def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT, response_json: str = None, message_uid: str = None):
@@ -750,26 +743,26 @@ class GUIState:
                                         dropdown.visible = False  # Start hidden
 
                                         if response_json:
-                                            with ui.row().classes('items-center px-4 py-1 cursor-pointer hover:bg-gray-100').on(
-                                                'click', lambda: asyncio.create_task(self.update_2D_ui(response_json=response_json))
+                                            def handle_preview():
+                                                dropdown.visible = False
+                                                asyncio.create_task(self.update_2D_ui(response_json=response_json))
+                                            with ui.row().classes('items-center w-full px-4 py-1 cursor-pointer hover:bg-gray-100').on(
+                                                'click', handle_preview
                                             ):
                                                 ui.icon('visibility').classes('text-gray-600')
-                                                ui.label('Preview').classes('ml-2 text-base')
+                                                ui.label('Preview').classes('text-base')
 
                                         if message_uid:
-                                        
-                                            with ui.row().classes('items-center px-4 py-1 cursor-pointer hover:bg-gray-100').on(
-                                                'click', lambda: asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
+                                            def handle_new_chat():
+                                                dropdown.visible = False
+                                                asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
+
+                                            with ui.row().classes('items-center w-full px-4 py-1 cursor-pointer hover:bg-gray-100').on(
+                                                'click', handle_new_chat
                                             ):
                                                 ui.icon('chat').classes('text-gray-600')
-                                                ui.label('New Chat').classes('ml-2 text-base')
+                                                ui.label('New Chat').classes('text-base')
 
-                                            with ui.row().classes('items-center px-4 py-2 cursor-pointer hover:bg-red-50').on(
-                                                'click',
-                                                lambda: asyncio.create_task(self.handle_delete_and_open_previous(message_uid=message_uid))
-                                            ):
-                                                ui.icon('delete').classes('text-red-500')
-                                                ui.label('Delete').classes('ml-2 text-base text-red-500')
 
         # To keep the chat scrolled to the bottom automatically
         with self.chat_container:
@@ -833,7 +826,7 @@ class GUIState:
             self.toggle_param_update_events(self.ui_design_refs)
 
             try:
-                message = self.message_service.add_message(chat_uid=self.chat_uid, message=self.chat_input.value, response=str(params))
+                message = self.message_service.add_message(chat_uid=self.chat_uid, message=self.chat_input.value, response=str(self.pattern_state.design_params))
             except Exception as e:
                 print(e)
             # Add system message (left-aligned bubble)
@@ -854,7 +847,7 @@ class GUIState:
                     with ui.column().classes('p-3 gap-1'):
                         ui.label("Sorry, I couldn't process that input. Please try again.").classes('text-gray-800')
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
-        
+
         try:
             self.loop = asyncio.get_event_loop()
             await self.loop.run_in_executor(self._async_executor, self._sync_update_3d)
@@ -913,7 +906,7 @@ class GUIState:
             await self.update_pattern_ui_state()
             self.toggle_param_update_events(self.ui_design_refs)
             try:
-                message = self.message_service.add_message(chat_uid=self.chat_uid, message=self.data_url, response=str(params), message_type=MessageTypeEnum.IMAGE)
+                message = self.message_service.add_message(chat_uid=self.chat_uid, message=self.data_url, response=str(self.pattern_state.design_params), message_type=MessageTypeEnum.IMAGE)
             except Exception as err:
                 print(err)
             # Add system response
@@ -935,6 +928,7 @@ class GUIState:
             await self.loop.run_in_executor(self._async_executor, self._sync_update_3d)
         except Exception as e:
             print(e)
+
         finally:
             self.spin_dialog.close()
 
@@ -1219,7 +1213,6 @@ class GUIState:
         archive_path = self.pattern_state.save_for_format(file_format=file_format, pack=True)
         filename = f"Configured_design_{datetime.now().strftime('%y%m%d-%H-%M-%S')}.zip"
         ui.download(archive_path, filename)
-    
     # def state_download(self):
     #     """Download current state of a garment"""
     #     archive_path = self.pattern_state.save()
