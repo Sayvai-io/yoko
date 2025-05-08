@@ -52,6 +52,9 @@ class GUIState:
         self.chat_service = ChatService(db, user_id=user.id)
         self.message_service = MessageService(db, user_id=user.id)
         self.chat_uid = generate_unique_uid(model=Chat, field='chat_uid')
+
+        self.is_editing = False
+
         self.window = None
         self.content_type = None
         self.image_bytes = None
@@ -92,7 +95,6 @@ class GUIState:
         self.layout()
 
         self.pattern_parser = PatternParser()
-
     def release(self):
         """Clean-up after the sesssion"""
         self.pattern_state.release()
@@ -119,7 +121,7 @@ class GUIState:
         """Overall page layout"""
 
         # as % of viewport width/height
-        self.h_header = 5
+        self.h_header = 6
         self.h_params_content = 88
         self.h_garment_display = 74
         self.w_garment_display = 65
@@ -144,24 +146,37 @@ class GUIState:
                     ui.label("Chat History").classes("text-lg font-semibold")
                 self.def_chat_history()
 
-            # Toggle button for sidebar (fixed position - moved to left side)
-            self.sidebar_toggle_btn = ui.button(icon='chat', on_click=self.toggle_sidebar).classes(f'fixed top-[{self.h_header + 1}vh] left-2 z-20').props('round color=primary')
-
             with ui.row(wrap=False).classes(f'w-full h-[{self.h_params_content}dvh] p-0 m-0 '):
                 self.def_param_tabs_layout()
                 self.view_tabs_layout()
 
             # Overall wrapping
             # NOTE: https://nicegui.io/documentation/section_pages_routing#page_layout
-        with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] items-center bg-gradient-to-br from-blue-100 to-indigo-100  justify-end py-0 px-4 m-0'):
-            ui.label('Yokostyles - GarmentCode design configurator').classes('mr-auto text-black').style('font-size: 150%; font-weight: 400')
-            with ui.label(f"User - {self.user.email}").classes('ml-auto text-black').style('font-size: 120%; font-weight: 400'):
-                ui.button('Logout', on_click=lambda: ui.navigate.to('/logout')).classes("ml-4")
+        with ui.header(elevated=True, fixed=False).classes(
+    f'h-[{self.h_header}vh] bg-gradient-to-br from-blue-100 to-indigo-100 justify-between items-center px-6 py-2'
+):
+    # Sidebar toggle button (transparent)
+            self.sidebar_toggle_btn = ui.button(
+                icon='menu',
+                on_click=self.toggle_sidebar
+            ).props('round flat').classes('bg-transparent')
+
+            # Title
+            ui.label('Yokostyles - GarmentCode Configurator')\
+                .classes('text-xl font-semibold text-gray-800')
+
+            # Profile avatar + dropdown
+            with ui.avatar(icon='person', color='primary', size='md').props('clickable') as avatar:
+                with ui.menu():
+                    ui.label(f"Signed in as {self.user.email}").classes("text-sm text-gray-600 px-4 py-2")
+                    ui.separator()
+                    ui.menu_item("Logout", on_click=lambda: ui.navigate.to('/logout'))
 
     def toggle_sidebar(self):
         """Toggle visibility of the sidebar"""
         self.sidebar_visible = not self.sidebar_visible
         if self.sidebar_visible:
+            self.refresh_chat_list()
             self.sidebar_column.style('transform: translateX(0%)')
         else:
             self.sidebar_column.style('transform: translateX(-100%)')
@@ -206,32 +221,19 @@ class GUIState:
     def def_body_tab(self):
 
         # Set of buttons
-        with ui.row():
-            ui.button('Upload', on_click=self.ui_body_dialog.open)
+        # with ui.row():
+        #     ui.button('Upload', on_click=self.ui_body_dialog.open)
 
         self.ui_active_body_refs = {}
         self.ui_passive_body_refs = {}
-        with ui.scroll_area().classes('w-full h-full p-0 m-0'): # NOTE: p-0 m-0 gap-0 dont' seem to have effect
-            body = self.pattern_state.body_params
-            for param in body:
-                param_name = param.replace('_', ' ').capitalize()
-                elem = ui.number(
-                        label=param_name,
-                        value=str(body[param]),
-                        format='%.2f',
-                        precision=2,
-                        step=0.5,
-                ).classes('text-[0.85rem]')
+        with ui.column().classes('w-full h-full items-center justify-center gap-2'):
+            ui.label("Create Your Own Avatar").classes('text-2xl font-bold mt-4')
+            ui.label("Coming Soon").classes('text-lg text-gray-500')
 
-                if param[0] == '_':  # Info elements for calculatable parameters
-                    elem.disable()
-                    self.ui_passive_body_refs[param] = elem
-                else:   # active elements accepting input
-                    # NOTE: e.sender == UI object, e.value == new value
-                    elem.on_value_change(lambda e, dic=body, param=param: self.update_pattern_ui_state(
-                        dic, param, e.value, body_param=True
-                    ))
-                    self.ui_active_body_refs[param] = elem
+    # def def_body_tab(self):
+    #     with ui.column().classes('w-full h-full items-center justify-center gap-2'):
+    #         ui.label("Create Your Own Avatar").classes('text-2xl font-bold mt-4')
+    #         ui.label("Coming Soon").classes('text-lg text-gray-500')
 
     def def_flat_design_subtab(self, ui_elems, design_params, use_collapsible=False):
         """Group of design parameters"""
@@ -510,11 +512,13 @@ class GUIState:
 
     def start_edit(self, chat):
         """Start editing a chat title"""
+        self.is_editing = True
         chat.editing = True
         self.refresh_chat_list()
 
     def save_edit(self, chat, input_box):
         """Save edited chat title and update UI"""
+        self.is_editing = False
         new_title = input_box.value
         if new_title.strip():
             self.chat_service.update_chat_title(chat_uid=chat.chat_uid, title=new_title)
@@ -525,6 +529,7 @@ class GUIState:
 
     def cancel_edit(self, chat):
         """Cancel editing a chat title"""
+        self.is_editing = False
         chat.editing = False
         self.refresh_chat_list()
 
@@ -540,24 +545,6 @@ class GUIState:
         return dt.strftime("%b %d")
 
     def def_chat_history(self):
-        def start_edit(chat):
-            with ui.dialog() as edit_dialog:
-                with ui.card():
-                    input_box = ui.input(value=chat.title).classes("text-sm w-full")
-                    with ui.row().classes("gap-2 mt-1"):
-                        ui.button('Save', on_click=lambda: save_edit(chat, input_box, edit_dialog)).props('dense flat color=positive')
-                        ui.button('Cancel', on_click=edit_dialog.close).props('dense flat color=negative')
-            edit_dialog.open()
-
-        def save_edit(chat, input_box, dialog):
-            new_title = input_box.value
-            if new_title.strip():
-                self.chat_service.update_chat_title(chat_uid=chat.chat_uid, title=new_title)
-                chat.title = new_title
-            chat.editing = False
-            dialog.close()
-            ui.update()
-
         chat_history = self.chat_service.get_user_chats()
 
         with ui.row().classes("w-full h-screen"):
@@ -610,8 +597,7 @@ class GUIState:
 
             # If the deleted chat was the current chat, create a new one
             if self.chat_uid == chat_uid:
-                self.chat_uid = generate_unique_uid(model=Chat, field='chat_uid')
-                self.chat_container.clear()
+                self.new_chat()
 
             ui.notify('Chat deleted successfully', type='positive')
         except Exception as e:
@@ -619,6 +605,7 @@ class GUIState:
 
     def refresh_chat_list(self):
         """Refresh the chat list in the sidebar"""
+        print("Refreshing chat list...")
         # Clear the existing chat list
         self.chat_list_container.clear()
 
@@ -696,7 +683,9 @@ class GUIState:
                 ).props('accept="image/*"')
                 ui.button('Close', on_click=self.upload_dialog.close)
 
-    async def open_previous_chat(self,chat_uid:str, isNew:bool = False):
+    async def open_previous_chat(self, chat_uid: str, isNew: bool = False):
+        if self.is_editing:
+            return
         try:
             self.spin_dialog.open()
             if not chat_uid:
@@ -709,10 +698,11 @@ class GUIState:
             self.toggle_sidebar()
             for prompt in prompt_lists:
                 self.add_parse_tab_prompt(prompt=prompt.message, isUser=True, prompt_type=prompt.message_type)
-                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=prompt.response)
+                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=prompt.response, message_uid=prompt.message_uid)
             try:
                 raw_response = prompt_lists[-1].response
                 await self.update_2D_ui(response_json=raw_response)
+                await self.update_3d_scene()
             except (ValueError, SyntaxError) as e:
                 print(f"Invalid dict format: {e}")
 
@@ -721,7 +711,8 @@ class GUIState:
         finally:
             self.spin_dialog.close()
 
-    def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT, response_json: str = None):
+
+    def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT, response_json: str = None, message_uid: str = None):
         if isUser:
             if prompt_type == MessageTypeEnum.TEXT:
                 with self.chat_container:
@@ -739,16 +730,75 @@ class GUIState:
         else:
             with self.chat_container:
                 with ui.row().classes('w-full justify-start'):
-                    with ui.card().classes('max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):
+                    with ui.card().classes('relative max-w-[70%] p-1 bg-gray-100 rounded-xl shadow-sm'):
                         with ui.column().classes('p-3 gap-1'):
                             ui.label(prompt).classes('text-gray-800 text-base')
+
                             with ui.row().classes('w-full items-center justify-end gap-1'):
                                 ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
-                                if response_json:
-                                     ui.icon('visibility').classes('text-gray-600 cursor-pointer').on('click',lambda: asyncio.create_task(self.update_2D_ui(response_json=response_json)))
+
+                                # Dropdown trigger and content
+                                menu_open = ui.element('div').classes('relative')
+
+                                with menu_open:
+                                    def toggle_menu():
+                                        dropdown.visible = not dropdown.visible
+
+                                    ui.icon('more_vert').classes('cursor-pointer text-gray-600').on('click', toggle_menu)
+
+                                    # Dropdown menu with icons
+                                    with ui.column().classes('absolute right-0 top-6 bg-white border rounded-md shadow-md z-50 w-32').style('min-width: 200px').props('v-show="visible"') as dropdown:
+                                        dropdown.visible = False  # Start hidden
+
+                                        if response_json:
+                                            def handle_preview():
+                                                dropdown.visible = False
+                                                asyncio.create_task(self.update_2D_ui(response_json=response_json))
+                                            with ui.row().classes('items-center w-full px-4 py-1 cursor-pointer hover:bg-gray-100').on(
+                                                'click', handle_preview
+                                            ):
+                                                ui.icon('visibility').classes('text-gray-600')
+                                                ui.label('Preview').classes('text-base')
+
+                                        if message_uid:
+                                            def handle_new_chat():
+                                                dropdown.visible = False
+                                                asyncio.create_task(self.create_new_chat_from_message(message_uid=message_uid))
+
+                                            with ui.row().classes('items-center w-full px-4 py-1 cursor-pointer hover:bg-gray-100').on(
+                                                'click', handle_new_chat
+                                            ):
+                                                ui.icon('chat').classes('text-gray-600')
+                                                ui.label('New Chat').classes('text-base')
+
+                                            # with ui.row().classes('items-center px-4 py-2 cursor-pointer hover:bg-red-50').on(
+                                            #     'click',
+                                            #     lambda: asyncio.create_task(self.handle_delete_and_open_previous(message_uid=message_uid))
+                                            # ):
+                                            #     ui.icon('delete').classes('text-red-500')
+                                            #     ui.label('Delete').classes('ml-2 text-base text-red-500')
+
         # To keep the chat scrolled to the bottom automatically
         with self.chat_container:
             ui.run_javascript("document.querySelector('[data-id=\"chat-container\"]').scrollTop = document.querySelector('[data-id=\"chat-container\"]').scrollHeight;")
+
+    async def create_new_chat_from_message(self, message_uid: str):
+        try:
+            self.spin_dialog.open()
+            old_chat_uid = self.chat_uid
+            self.new_chat()
+            prompts = self.message_service.copy_messages(source_chat_uid=old_chat_uid, dest_chat_uid = self.chat_uid, message_uid=message_uid)
+            for prompt in prompts:
+                self.add_parse_tab_prompt(prompt=prompt.message, isUser=True, prompt_type=prompt.message_type)
+                self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=prompt.response, message_uid=prompt.message_uid)
+            raw_response = prompts[-1].response
+            await self.update_2D_ui(response_json=raw_response)
+            await self.update_3d_scene()
+        except Exception as e:
+            print(e)
+        finally:
+            self.spin_dialog.close()
+
 
     def new_chat(self):
         self.tabs.value = self.ui_parse_tab
@@ -788,14 +838,15 @@ class GUIState:
             self.pattern_state.set_new_design(params)
             self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
             await self.update_pattern_ui_state()
+            
             self.toggle_param_update_events(self.ui_design_refs)
 
             try:
-                self.message_service.add_message(chat_uid=self.chat_uid, message=self.chat_input.value, response=str(params))
+                message = self.message_service.add_message(chat_uid=self.chat_uid, message=self.chat_input.value, response=str(self.pattern_state.design_params))
             except Exception as e:
                 print(e)
             # Add system message (left-aligned bubble)
-            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params))
+            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params), message_uid=message.message_uid)
 
         except TimeoutError:
             ui.notify('Request timed out. Please try again.', type='negative')
@@ -813,13 +864,17 @@ class GUIState:
                         ui.label("Sorry, I couldn't process that input. Please try again.").classes('text-gray-800')
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
 
+        try:
+            print("Updating 3D scene...")
+            self.loop = asyncio.get_event_loop()
+            await self.update_3d_scene()
+        except Exception as e:
+            print(e)
+
         finally:
-            # Always close the spinner dialog
-            self.spin_dialog.close()
-            # Clear input
-            # Clear input
             self.last_chat_input = self.chat_input.value
             self.chat_input.value = ''
+            self.spin_dialog.close()
 
     async def update_2D_ui(self, response_json):
         try:
@@ -868,11 +923,11 @@ class GUIState:
             await self.update_pattern_ui_state()
             self.toggle_param_update_events(self.ui_design_refs)
             try:
-                self.message_service.add_message(chat_uid=self.chat_uid, message=self.data_url, response=str(params), message_type=MessageTypeEnum.IMAGE)
+                message = self.message_service.add_message(chat_uid=self.chat_uid, message=self.data_url, response=str(self.pattern_state.design_params), message_type=MessageTypeEnum.IMAGE)
             except Exception as err:
                 print(err)
             # Add system response
-            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params))
+            self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=str(params), message_uid=message.message_uid)
 
             ui.notify(f'Successfully processed {e.name}')
             self.upload_dialog.close()
@@ -884,6 +939,13 @@ class GUIState:
                     with ui.column().classes('p-3 gap-1'):
                         ui.label("Sorry, I couldn't process that image. Please try again.").classes('text-gray-800')
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
+
+        try:
+            self.loop = asyncio.get_event_loop()
+            await self.loop.run_in_executor(self._async_executor, self._sync_update_3d)
+        except Exception as e:
+            print(e)
+
         finally:
             self.spin_dialog.close()
 
@@ -1134,7 +1196,7 @@ class GUIState:
         # Put the new one for display
         self.garm_3d_filename = f'garm_3d_{self.pattern_state.id}_{time.time()}.glb'
         shutil.copy2(path / filename, self.local_path_3d / self.garm_3d_filename)
-        
+
         # Create the upgrade prompt task with error handling to prevent crashes
         try:
             # Use create_task only if the client is still connected
@@ -1168,7 +1230,6 @@ class GUIState:
         archive_path = self.pattern_state.save_for_format(file_format=file_format, pack=True)
         filename = f"Configured_design_{datetime.now().strftime('%y%m%d-%H-%M-%S')}.zip"
         ui.download(archive_path, filename)
-    
     # def state_download(self):
     #     """Download current state of a garment"""
     #     archive_path = self.pattern_state.save()
