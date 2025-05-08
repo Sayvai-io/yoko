@@ -38,6 +38,22 @@ theme_colors = Namespace(
     warning='#9333ea'
 )
 
+class DialogManager:
+    def __init__(self, dialog):
+        self.dialog = dialog
+        self.counter = 0
+
+    def open(self):
+        if self.counter == 0:
+            self.dialog.open()
+        self.counter += 1
+
+    def close(self):
+        if self.counter > 0:
+            self.counter -= 1
+            if self.counter == 0:
+                self.dialog.close()
+
 # State of GUI
 class GUIState:
     """State of GUI-related objects
@@ -95,6 +111,7 @@ class GUIState:
         self.layout()
 
         self.pattern_parser = PatternParser()
+
     def release(self):
         """Clean-up after the sesssion"""
         self.pattern_state.release()
@@ -457,6 +474,8 @@ class GUIState:
             # Styles https://quasar.dev/vue-components/spinners
             ui.spinner('hearts', size='15em').classes('fixed-center')   # NOTE: 'dots' 'ball'
 
+        self.spinner_dialog_manager = DialogManager(self.spin_dialog)
+
     def def_body_file_dialog(self):
         """ Dialog for loading parameter files (body)
         """
@@ -687,7 +706,7 @@ class GUIState:
         if self.is_editing:
             return
         try:
-            self.spin_dialog.open()
+            self.spinner_dialog_manager.open()
             if not chat_uid:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat uid must not be empty")
             chat = self.chat_service.get_chat_by_uid(chat_uid)
@@ -709,7 +728,7 @@ class GUIState:
         except Exception as e:
             print(e)
         finally:
-            self.spin_dialog.close()
+            self.spinner_dialog_manager.close()
 
 
     def add_parse_tab_prompt(self, prompt:str, isUser:bool, prompt_type: MessageTypeEnum = MessageTypeEnum.TEXT, response_json: str = None, message_uid: str = None):
@@ -784,7 +803,7 @@ class GUIState:
 
     async def create_new_chat_from_message(self, message_uid: str):
         try:
-            self.spin_dialog.open()
+            self.spinner_dialog_manager.open()
             old_chat_uid = self.chat_uid
             self.new_chat()
             prompts = self.message_service.copy_messages(source_chat_uid=old_chat_uid, dest_chat_uid = self.chat_uid, message_uid=message_uid)
@@ -797,7 +816,7 @@ class GUIState:
         except Exception as e:
             print(e)
         finally:
-            self.spin_dialog.close()
+            self.spinner_dialog_manager.close()
 
 
     def new_chat(self):
@@ -818,7 +837,7 @@ class GUIState:
 
         try:
             # Show existing spinner dialog
-            self.spin_dialog.open()
+            self.spinner_dialog_manager.open()
 
             # Process input through LLM using ThreadPoolExecutor
             loop = asyncio.get_event_loop()
@@ -838,7 +857,7 @@ class GUIState:
             self.pattern_state.set_new_design(params)
             self.update_design_params_ui_state(self.ui_design_refs, self.pattern_state.design_params)
             await self.update_pattern_ui_state()
-            
+
             self.toggle_param_update_events(self.ui_design_refs)
 
             try:
@@ -874,11 +893,11 @@ class GUIState:
         finally:
             self.last_chat_input = self.chat_input.value
             self.chat_input.value = ''
-            self.spin_dialog.close()
+            self.spinner_dialog_manager.close()
 
     async def update_2D_ui(self, response_json):
         try:
-            self.spin_dialog.open()
+            self.spinner_dialog_manager.open()
             params = ast.literal_eval(response_json)
             self.toggle_param_update_events(self.ui_design_refs)
             self.pattern_state.set_new_design(params)
@@ -888,7 +907,7 @@ class GUIState:
         except Exception as e:
             print(e)
         finally:
-            self.spin_dialog.close()
+            self.spinner_dialog_manager.close()
 
     async def handle_image_upload(self, e: events.UploadEventArguments):
         """Handle uploaded reference images"""
@@ -903,7 +922,7 @@ class GUIState:
             # Add user message with image
             self.add_parse_tab_prompt(prompt=data_url, isUser=True, prompt_type=MessageTypeEnum.IMAGE)
             # Show spinner while processing
-            self.spin_dialog.open()
+            self.spinner_dialog_manager.open()
             try:
                 prompts = self.message_service.get_messages_by_chat(chat_uid=self.chat_uid)
                 prompts = prompts[len(prompts)-20:] if len(prompts)>20 else prompts
@@ -947,7 +966,7 @@ class GUIState:
             print(e)
 
         finally:
-            self.spin_dialog.close()
+            self.spinner_dialog_manager.close()
 
     # !SECTION
     # SECTION -- Event callbacks
@@ -975,20 +994,20 @@ class GUIState:
             # NOTE Splashscreen solution to block users from modifying params while updating
             # https://github.com/zauberzeug/nicegui/discussions/1988
 
-            self.spin_dialog.open()
+            self.spinner_dialog_manager.open()
             # NOTE: Using threads for async call
             # https://stackoverflow.com/questions/49822552/python-asyncio-typeerror-object-dict-cant-be-used-in-await-expression
             self.loop = asyncio.get_event_loop()
             await self.loop.run_in_executor(self._async_executor, self._sync_update_state)
 
-            self.spin_dialog.close()
+            self.spinner_dialog_manager.close()
 
         except KeyboardInterrupt as e:
             raise e
         except BaseException as e:
             traceback.print_exc()
             print(e)
-            self.spin_dialog.close()  # If open
+            self.spinner_dialog_manager.close()  # If open
             ui.notify(
                 'Failed to generate pattern correctly. Try different parameter values',
                 type='negative',
@@ -1125,7 +1144,7 @@ class GUIState:
             # NOTE Splashscreen solution to block users from modifying params while updating
             # https://github.com/zauberzeug/nicegui/discussions/1988
 
-            self.spin_dialog.open()
+            self.spinner_dialog_manager.open()
             # NOTE: Using threads for async call
             # https://stackoverflow.com/questions/49822552/python-asyncio-typeerror-object-dict-cant-be-used-in-await-expression
             self.loop = asyncio.get_event_loop()
@@ -1140,7 +1159,7 @@ class GUIState:
                         ).scale(0.01).rotate(np.pi / 2, 0., 0.)
 
             # Show the result! =)
-            self.spin_dialog.close()
+            self.spinner_dialog_manager.close()
 
         except KeyboardInterrupt as e:
             raise e
@@ -1148,7 +1167,7 @@ class GUIState:
             traceback.print_exc()
             print(e)
             self.ui_3d_scene.set_visibility(True)
-            self.spin_dialog.close()  # If open
+            self.spinner_dialog_manager.close()  # If open
             ui.notify(
                 'Failed to generate 3D model correctly. Try different parameter values',
                 type='negative',
@@ -1214,7 +1233,7 @@ class GUIState:
 
     async def random(self):
         # Sampling could be slow, so add spin always
-        self.spin_dialog.open()
+        self.spinner_dialog_manager.open()
 
     async def default(self):
         self.toggle_param_update_events(self.ui_design_refs)
