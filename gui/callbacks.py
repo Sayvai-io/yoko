@@ -52,6 +52,9 @@ class GUIState:
         self.chat_service = ChatService(db, user_id=user.id)
         self.message_service = MessageService(db, user_id=user.id)
         self.chat_uid = generate_unique_uid(model=Chat, field='chat_uid')
+
+        self.is_editing = False
+
         self.window = None
         self.content_type = None
         self.image_bytes = None
@@ -509,11 +512,13 @@ class GUIState:
 
     def start_edit(self, chat):
         """Start editing a chat title"""
+        self.is_editing = True
         chat.editing = True
         self.refresh_chat_list()
 
     def save_edit(self, chat, input_box):
         """Save edited chat title and update UI"""
+        self.is_editing = False
         new_title = input_box.value
         if new_title.strip():
             self.chat_service.update_chat_title(chat_uid=chat.chat_uid, title=new_title)
@@ -524,6 +529,7 @@ class GUIState:
 
     def cancel_edit(self, chat):
         """Cancel editing a chat title"""
+        self.is_editing = False
         chat.editing = False
         self.refresh_chat_list()
 
@@ -678,6 +684,8 @@ class GUIState:
                 ui.button('Close', on_click=self.upload_dialog.close)
 
     async def open_previous_chat(self, chat_uid: str, isNew: bool = False):
+        if self.is_editing:
+            return
         try:
             self.spin_dialog.open()
             if not chat_uid:
@@ -694,6 +702,7 @@ class GUIState:
             try:
                 raw_response = prompt_lists[-1].response
                 await self.update_2D_ui(response_json=raw_response)
+                await self.update_3d_scene()
             except (ValueError, SyntaxError) as e:
                 print(f"Invalid dict format: {e}")
 
@@ -784,6 +793,7 @@ class GUIState:
                 self.add_parse_tab_prompt(prompt="I've updated the pattern based on your description. You can adjust the parameters further if needed.", isUser=False, response_json=prompt.response, message_uid=prompt.message_uid)
             raw_response = prompts[-1].response
             await self.update_2D_ui(response_json=raw_response)
+            await self.update_3d_scene()
         except Exception as e:
             print(e)
         finally:
