@@ -119,7 +119,7 @@ class GUIState:
         """Overall page layout"""
 
         # as % of viewport width/height
-        self.h_header = 5
+        self.h_header = 6
         self.h_params_content = 88
         self.h_garment_display = 74
         self.w_garment_display = 65
@@ -150,15 +150,25 @@ class GUIState:
 
             # Overall wrapping
             # NOTE: https://nicegui.io/documentation/section_pages_routing#page_layout
-        with ui.header(elevated=True, fixed=False).classes(f'h-[{self.h_header}vh] bg-gradient-to-br from-blue-100 to-indigo-100  justify-end py-0 px-4 m-0'):
-             # Added chat history toggle button to header
-            self.sidebar_toggle_btn = ui.button(icon='menu', on_click=self.toggle_sidebar).props('round color=primary').classes('mx-2')
-            
-            ui.label('Yokostyles - GarmentCode design configurator').classes('mr-auto text-black').style('font-size: 150%; font-weight: 400')
-            
-           
-            with ui.label(f"User - {self.user.email}").classes('ml-auto text-black').style('font-size: 120%; font-weight: 400'):
-                ui.button('Logout', on_click=lambda: ui.navigate.to('/logout')).classes("ml-4")
+        with ui.header(elevated=True, fixed=False).classes(
+    f'h-[{self.h_header}vh] bg-gradient-to-br from-blue-100 to-indigo-100 justify-between items-center px-6 py-2'
+):
+    # Sidebar toggle button (transparent)
+            self.sidebar_toggle_btn = ui.button(
+                icon='menu',
+                on_click=self.toggle_sidebar
+            ).props('round flat').classes('bg-transparent')
+
+            # Title
+            ui.label('Yokostyles - GarmentCode Configurator')\
+                .classes('text-xl font-semibold text-gray-800')
+
+            # Profile avatar + dropdown
+            with ui.avatar(icon='person', color='primary', size='md').props('clickable') as avatar:
+                with ui.menu():
+                    ui.label(f"Signed in as {self.user.email}").classes("text-sm text-gray-600 px-4 py-2")
+                    ui.separator()
+                    ui.menu_item("Logout", on_click=lambda: ui.navigate.to('/logout'))
 
     def toggle_sidebar(self):
         """Toggle visibility of the sidebar"""
