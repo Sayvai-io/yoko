@@ -215,40 +215,22 @@ class GUIState:
                 with ui.tab_panel(self.ui_body_tab).classes('w-full h-full items-center p-0 m-0'):
                     self.def_body_tab()
 
-    # def def_body_tab(self):
-
-    #     # Set of buttons
-    #     with ui.row():
-    #         ui.button('Upload', on_click=self.ui_body_dialog.open)
-
-    #     self.ui_active_body_refs = {}
-    #     self.ui_passive_body_refs = {}
-    #     with ui.scroll_area().classes('w-full h-full p-0 m-0'): # NOTE: p-0 m-0 gap-0 dont' seem to have effect
-    #         body = self.pattern_state.body_params
-    #         for param in body:
-    #             param_name = param.replace('_', ' ').capitalize()
-    #             elem = ui.number(
-    #                     label=param_name,
-    #                     value=str(body[param]),
-    #                     format='%.2f',
-    #                     precision=2,
-    #                     step=0.5,
-    #             ).classes('text-[0.85rem]')
-
-    #             if param[0] == '_':  # Info elements for calculatable parameters
-    #                 elem.disable()
-    #                 self.ui_passive_body_refs[param] = elem
-    #             else:   # active elements accepting input
-    #                 # NOTE: e.sender == UI object, e.value == new value
-    #                 elem.on_value_change(lambda e, dic=body, param=param: self.update_pattern_ui_state(
-    #                     dic, param, e.value, body_param=True
-    #                 ))
-    #                 self.ui_active_body_refs[param] = elem
-
     def def_body_tab(self):
+
+        # Set of buttons
+        # with ui.row():
+        #     ui.button('Upload', on_click=self.ui_body_dialog.open)
+
+        self.ui_active_body_refs = {}
+        self.ui_passive_body_refs = {}
         with ui.column().classes('w-full h-full items-center justify-center gap-2'):
             ui.label("Create Your Own Avatar").classes('text-2xl font-bold mt-4')
             ui.label("Coming Soon").classes('text-lg text-gray-500')
+
+    # def def_body_tab(self):
+    #     with ui.column().classes('w-full h-full items-center justify-center gap-2'):
+    #         ui.label("Create Your Own Avatar").classes('text-2xl font-bold mt-4')
+    #         ui.label("Coming Soon").classes('text-lg text-gray-500')
 
     def def_flat_design_subtab(self, ui_elems, design_params, use_collapsible=False):
         """Group of design parameters"""
