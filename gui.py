@@ -166,5 +166,6 @@ if __name__ in {"__main__", "__mp_main__"}:
         storage_secret=os.getenv("UI_STORAGE_KEY"),
         favicon=icon_image_b64,
         port=3000,
-        show=True
+        show=False,
+        reconnect_timeout=120
     )
