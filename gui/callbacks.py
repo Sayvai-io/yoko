@@ -849,7 +849,7 @@ class GUIState:
 
             params = await loop.run_in_executor(
                 self._async_executor,
-                lambda: self.pattern_parser.process_input(curr_dict=self.pattern_state.design_params, prompts=prompts, text=self.chat_input.value)
+                lambda: self.pattern_parser.process_input(prompts=prompts, text=self.chat_input.value)
             )
 
             # Update design parameters
@@ -932,7 +932,7 @@ class GUIState:
             loop = asyncio.get_event_loop()
             params = await loop.run_in_executor(
                 self._async_executor,
-                lambda: self.pattern_parser.process_input(curr_dict=self.pattern_state.design_params, prompts=prompts, image_data=(self.image_bytes, self.content_type))
+                lambda: self.pattern_parser.process_input(prompts=prompts, image_data=(self.image_bytes, self.content_type))
             )
 
             # Update design parameters

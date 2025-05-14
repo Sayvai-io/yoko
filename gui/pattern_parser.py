@@ -34,7 +34,6 @@ class PatternParser:
 
     def process_input(
             self,
-            curr_dict,
             prompts,
             text: Optional[str] = None,
             image_data: Optional[Tuple[bytes, str]] = None
@@ -49,7 +48,6 @@ class PatternParser:
             Dictionary of pattern parameters
         """
         try:
-            self.curr_dict = str(curr_dict)
             # Store inputs for reference
             if text:
                 self._save_text_input(text)
