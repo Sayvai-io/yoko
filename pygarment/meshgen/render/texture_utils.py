@@ -56,13 +56,13 @@ def texture_mesh_islands(
     return uv_list
 
 def _uv_connected_components(face_texture_coords):
-
+    
     # Find connected components of face and vertex texture coords
     face_components = igl.facet_components(face_texture_coords)
     vert_components = igl.vertex_components(face_texture_coords)
-    num_ccs = max(face_components) + 1
+    num_ccs = face_components[0]
 
-    return vert_components, face_components, num_ccs
+    return vert_components, face_components[1], num_ccs
 
 def unwarp_UV(texture_coords, face_texture_coords, padding=3):
     # Unwrap uvs for each connected component------------------------
