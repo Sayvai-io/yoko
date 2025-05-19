@@ -1,0 +1,6 @@
+tmp_gui/
+Logs
+data
+.nicegui
+__pycache__
+app.db
