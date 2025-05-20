@@ -14,6 +14,7 @@ from gui.utils import system_prompt, template
 import logging
 from rich.logging import RichHandler
 from rich.console import Console
+from db.models import Message, MessageTypeEnum
 
 
 load_dotenv()
@@ -27,13 +28,13 @@ load_dotenv()
 
 class PatternParser:
     def __init__(self):
-        self.memory=[]
         # Initialize any LLM/vision model clients here
         # logger.info("[bold green]PatternParser initialized[/bold green]")
         pass
 
     def process_input(
             self,
+            prompts,
             text: Optional[str] = None,
             image_data: Optional[Tuple[bytes, str]] = None
     ) -> Dict:
@@ -55,7 +56,7 @@ class PatternParser:
 
             # Pass inputs to parameter generation
             # logger.info(f"[bold green] type of image data {type(image_data)} [/bold green]")
-            params = self._generate_dummy_params(text, image_data)
+            params = self._generate_dummy_params(prompts, text, image_data)
 
             return params
 
@@ -86,14 +87,25 @@ class PatternParser:
 
         # logger.info(f"[bold cyan]Image input saved[/bold cyan] to {save_dir / f'input_{timestamp}.{ext}'}")
 
-    def _generate_dummy_params(self, text: Optional[str] = None,image_data: bytes = None) -> Dict:
-        
+    def _generate_dummy_params(self, prompts: [Message] = None, text: Optional[str] = None, image_data: bytes = None) -> Dict:
+
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
         def encode_image(image_data: bytes) -> str:
             return base64.b64encode(image_data[0]).decode("utf-8")
-
-        user_messages = self.memory.copy()  # Include past conversations for context
+        user_messages = []
+        for prompt in prompts:
+            if prompt.message_type == MessageTypeEnum.IMAGE:
+                default_text = "From the provided image and template, please generate a parameter configuration for the garment."
+                user_messages.append({"type": "text", "text": default_text})
+                user_messages.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": prompt.message},
+                    }
+                )
+            elif prompt.message_type == MessageTypeEnum.TEXT:
+                user_messages.append({"type": "text", "text": prompt.message})
 
         user_messages.append({
             "type": "text",
@@ -104,11 +116,9 @@ class PatternParser:
 
         if text:
             user_messages.append({"type": "text", "text": text})
-            self.memory.append({"type": "text", "text": text})  # Save message to self.memory
         else:
             default_text = "From the provided image and template, please generate a parameter configuration for the garment."
             user_messages.append({"type": "text", "text": default_text})
-            self.memory.append({"type": "text", "text": default_text})
 
         if image_data:
             base64_image = encode_image(image_data)
@@ -118,14 +128,9 @@ class PatternParser:
                     "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
                 }
             )
-            self.memory.append({
-                "type": "image_url",
-                "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
-            })
 
         if not user_messages:
             raise ValueError("Either text or image_file must be provided.")
-
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "system", "content": system_prompt}] + [
@@ -135,14 +140,10 @@ class PatternParser:
         )
 
         config_dict = json.loads(response.choices[0].message.content)
-        print_data(config_dict)
-
-        # Manage self.memory size to prevent excessive buildup
-        if len(self.memory) > 20:
-            self.memory = self.memory[-20:] 
+        # print_data(config_dict)
 
         return config_dict
-        
+
 def print_data(data):
     for key, value in data.items():
         print(f"\n=== {key} ===")

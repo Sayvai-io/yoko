@@ -1,4 +1,4 @@
-# Jupyter tmp files 
+# Jupyter tmp files
 .ipynb_checkpoints
 
 # VSCode settings
@@ -8,6 +8,7 @@ __pycache__
 
 # PyCharm
 .idea
+app.db
 
 # Data folder for inputs
 data/
