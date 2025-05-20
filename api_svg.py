@@ -54,4 +54,4 @@ def generate_2D(request: PatternRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("files_with_json:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("api_svg:app", host="0.0.0.0", port=8000, reload=True)
