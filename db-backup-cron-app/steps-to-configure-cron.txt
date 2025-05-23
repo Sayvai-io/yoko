@@ -1,0 +1,18 @@
+OPEN
+https://console.cloud.google.com/ > IAM and admin > service accounts >
+create service account
+and copy the email (eg: db-backup@cogent-splicer-443309-u2.iam.gserviceaccount.com)
+and click three dots > manage keys > create key and select json
+and store in out PROJECT DIRECTORY and rename it to service_account.json
+
+go to google drive
+create a folder
+click three dots on folder and share and paste the copied email
+also open the folder and check the url
+eg: https://drive.google.com/drive/u/0/folders/<GOOGLE_DRIVE_FOLDER_ID>
+copy this GOOGLE_DRIVE_FOLDER_ID
+
+add this in our project .env
+GOOGLE_DRIVE_FOLDER_ID = <the copied folder id>
+GOOGLE_SERVICE_ACCOUNT_FILE = "service_account.json"
+BACKUP_DIR = "./db-backup-cron-app/db-backups"
