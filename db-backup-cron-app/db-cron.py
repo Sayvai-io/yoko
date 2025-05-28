@@ -7,7 +7,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import pyminizip
-
+import time
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +18,7 @@ BACKUP_DIR = os.getenv("BACKUP_DIR", "./db-backups")
 SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
 DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")  # Optional folder ID
 BACKUP_PASSWORD = os.getenv("BACKUP_PASSWORD", "yoko@123!")  # Password for encrypted backups
+TIME_INTERVAL = os.getenv("CRON_TIME_INTERVAL", 604800)  # 7 days once by default
 
 def ensure_backup_dir():
     """Ensure backup directory exists"""
@@ -161,5 +162,15 @@ def main():
     else:
         print("❌ Backup failed, skipping upload")
 
+# def periodic_backup(interval_seconds=60):
+#     while True:
+#         try:
+#             main()
+#         except Exception as e:
+#             print(f"❌ Backup failed with error: {e}")
+#         time.sleep(interval_seconds)
+
 if __name__ == "__main__":
+    # interval = int(TIME_INTERVAL)
+    # periodic_backup(interval)  # Run every 60 seconds
     main()
