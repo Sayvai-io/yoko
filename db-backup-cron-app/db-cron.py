@@ -20,7 +20,7 @@ DATABASE = os.getenv("DATABASE", "sqlite").lower()
 BACKUP_DIR = os.getenv("BACKUP_DIR", "./db-backup-cron-app/db-backups")
 
 SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
-DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")  # Optional folder ID
+DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "1uq6E3fMHvW-w84bFP_QH5HkAvBMywH-U")  # Optional folder ID
 BACKUP_PASSWORD = os.getenv("BACKUP_PASSWORD", "yoko@123")  # Password for encrypted backups
 # TIME_INTERVAL = os.getenv("CRON_TIME_INTERVAL", 604800)  # 7 days once by default
 
@@ -34,7 +34,7 @@ def get_timestamp():
 
 def backup_sqlite():
     """Backup SQLite database"""
-    db_path = os.getenv("DATABASE_PATH", "./app.db")
+    db_path = os.getenv("DATABASE_PATH", "/GarmentCode/data/app.db")
     if not os.path.exists(db_path):
         print("❌ SQLite database not found at:", db_path)
         return None

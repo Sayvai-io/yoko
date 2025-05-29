@@ -7,23 +7,33 @@ ENV LD_LIBRARY_PATH /usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ENV DEBIAN_FRONTEND=noninteractive
 ENV VIRTUAL_ENV=/venv
 
-# Install base dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-pip \
-    python3-dev \
-    python3-venv \
-    git \
-    libcairo2 \
-    build-essential \
-    ca-certificates \
-    libomp-dev \
-    wget \
-    curl \
-    gnupg2 \
-    lsb-release \
-    cron \
-    mysql-client \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Configure apt
+RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::http::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::https::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::ftp::Timeout "120";' >> /etc/apt/apt.conf.d/80-retries
+
+# Install base dependencies with retry logic
+RUN for i in $(seq 1 3); do \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3-pip \
+        python3-dev \
+        python3-venv \
+        git \
+        libcairo2 \
+        build-essential \
+        ca-certificates \
+        libomp-dev \
+        wget \
+        curl \
+        gnupg2 \
+        lsb-release \
+        cron \
+        mysql-client && \
+    break || sleep 15; \
+    done && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libegl-mesa0 \
@@ -57,6 +67,10 @@ RUN git clone https://github.com/maria-korosteleva/NvidiaWarp-GarmentCode /Nvidi
 
 COPY . /GarmentCode
 
+RUN mv /GarmentCode/system.template.json /GarmentCode/system.json
+
+COPY ./service_account.json /service_account.json
+
 # Install pygarment and other packages
 RUN /venv/bin/pip install -r /GarmentCode/requirements.txt
 
@@ -74,8 +88,8 @@ COPY db-backup-cron-app/db-cron.py /GarmentCode/db-backup-cron-app/
 RUN chmod +x /GarmentCode/db-backup-cron-app/db-cron.py
 
 # Create cron job to run backup every day at 2 AM (0 2 * * *)
-RUN echo "* * * * * cd /GarmentCode && /venv/bin/python db-backup-cron-app/db-cron.py >> /var/log/cron.log 2>&1" > /etc/cron.d/db-backup-cron
-RUN chmod 0644 /etc/cron.d/db-backup-cron
+RUN printf "SHELL=/bin/bash\nPATH=/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\nPYTHONPATH=/GarmentCode\n\n* * * * * root cd /GarmentCode && /venv/bin/python db-backup-cron-app/db-cron.py >> /var/log/cron.log 2>&1\n" > /etc/cron.d/db-backup-cron \
+ && chmod 0644 /etc/cron.d/db-backup-cron
 
 # Create log file for cron
 RUN touch /var/log/cron.log

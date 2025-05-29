@@ -11,6 +11,7 @@ __pycache__
 app.db
 service_account.json
 db-backups
+logs
 
 # Data folder for inputs
 data/

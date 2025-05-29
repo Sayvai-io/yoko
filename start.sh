@@ -1,13 +1,22 @@
 #!/bin/bash
 
-# Start cron service
+# Create cron log file if it doesn't exist
+touch /var/log/cron.log
+
+# Ensure permissions are correct for the cron job file
+chmod 0644 /etc/cron.d/db-backup-cron
+
+# Apply the cron job
+crontab /etc/cron.d/db-backup-cron
+
+# Start cron service in the background
 service cron start
 
-# start the python-cron app, if using python interval
-# /GarmentCode/venv/bin/python /GarmentCode/db-backup-cron-app/db-cron.py
+# Optional: Small delay to ensure cron starts properly
+sleep 2
+
+# Change to the GarmentCode directory
+cd /GarmentCode
 
 # Start the main application using the virtual environment's Python
-/venv/bin/python /GarmentCode/gui.py
-
-# Keep the container running by tailing the cron log
-tail -f /var/log/cron.log
+/venv/bin/python gui.py
