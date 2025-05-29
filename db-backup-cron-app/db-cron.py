@@ -14,11 +14,15 @@ load_dotenv()
 
 # Configuration
 DATABASE = os.getenv("DATABASE", "sqlite").lower()
-BACKUP_DIR = os.getenv("BACKUP_DIR", "./db-backups")
+
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# default_dir = os.path.join(BASE_DIR, "db-backups")
+BACKUP_DIR = os.getenv("BACKUP_DIR", "./db-backup-cron-app/db-backups")
+
 SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
 DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")  # Optional folder ID
-BACKUP_PASSWORD = os.getenv("BACKUP_PASSWORD", "yoko@123!")  # Password for encrypted backups
-TIME_INTERVAL = os.getenv("CRON_TIME_INTERVAL", 604800)  # 7 days once by default
+BACKUP_PASSWORD = os.getenv("BACKUP_PASSWORD", "yoko@123")  # Password for encrypted backups
+# TIME_INTERVAL = os.getenv("CRON_TIME_INTERVAL", 604800)  # 7 days once by default
 
 def ensure_backup_dir():
     """Ensure backup directory exists"""
@@ -30,7 +34,7 @@ def get_timestamp():
 
 def backup_sqlite():
     """Backup SQLite database"""
-    db_path = "./app.db"
+    db_path = os.getenv("DATABASE_PATH", "./app.db")
     if not os.path.exists(db_path):
         print("❌ SQLite database not found at:", db_path)
         return None

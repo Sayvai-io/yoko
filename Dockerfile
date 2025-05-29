@@ -1,13 +1,11 @@
-# FROM ubuntu:20.04
-FROM nvidia/cuda:12.9.0-devel-ubuntu24.04
+FROM ubuntu:24.04
 
 ENV LANG C.UTF-8
 ENV CUDA_VERSION 12.9
 ENV PATH /usr/local/cuda/bin:$PATH
 ENV LD_LIBRARY_PATH /usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ENV DEBIAN_FRONTEND=noninteractive
-ENV VIRTUAL_ENV=/GarmentCode/venv
-
+ENV VIRTUAL_ENV=/venv
 
 # Install base dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -37,39 +35,46 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     mesa-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone NvidiaWarp-GarmentCode
-RUN git clone https://github.com/maria-korosteleva/NvidiaWarp-GarmentCode /NvidiaWarp-GarmentCode
+# cuda installation starts
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
+RUN mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+RUN wget https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda-repo-ubuntu2204-12-9-local_12.9.0-575.51.03-1_amd64.deb
+RUN dpkg -i cuda-repo-ubuntu2204-12-9-local_12.9.0-575.51.03-1_amd64.deb
+RUN cp /var/cuda-repo-ubuntu2204-12-9-local/cuda-*-keyring.gpg /usr/share/keyrings/
+RUN apt-get update
+RUN apt-get -y install cuda-toolkit-12-9
+# cuda installation ends
 
-# If your project is local, copy it in (if needed)
-COPY . /GarmentCode
-
-WORKDIR /GarmentCode
-RUN python3 -m venv venv
-
-# Or clone if it's remote
-# RUN git clone https://github.com/... /GarmentCode
+# Create and activate virtual environment
+RUN python3 -m venv /venv
 
 # Install pygarment and other packages
-WORKDIR /GarmentCode
-RUN /GarmentCode/venv/bin/pip install --upgrade pip && \
-    /GarmentCode/venv/bin/pip install -r requirements.txt
+RUN /venv/bin/pip install --upgrade pip && \
+/venv/bin/pip install pygarment
 
-# Build native libraries
+# # Clone NvidiaWarp-GarmentCode
+RUN git clone https://github.com/maria-korosteleva/NvidiaWarp-GarmentCode /NvidiaWarp-GarmentCode
+
+COPY . /GarmentCode
+
+# Install pygarment and other packages
+RUN /venv/bin/pip install -r /GarmentCode/requirements.txt
+
+# # Build native libraries
 WORKDIR /NvidiaWarp-GarmentCode
 RUN chmod +x ./tools/packman/packman
-WORKDIR /NvidiaWarp-GarmentCode
-RUN /GarmentCode/venv/bin/python build_lib.py --cuda_path="/usr/local/cuda"
 
-# Install the package in editable mode
-WORKDIR /GarmentCode
-RUN /GarmentCode/venv/bin/pip install -e /NvidiaWarp-GarmentCode
+# WORKDIR /NvidiaWarp-GarmentCode
+RUN /venv/bin/python build_lib.py --cuda_path="/usr/local/cuda"
 
-# Set up cron job for database backup
+RUN /venv/bin/pip install -e /NvidiaWarp-GarmentCode
+
+# # Set up cron job for database backup
 COPY db-backup-cron-app/db-cron.py /GarmentCode/db-backup-cron-app/
 RUN chmod +x /GarmentCode/db-backup-cron-app/db-cron.py
 
 # Create cron job to run backup every day at 2 AM (0 2 * * *)
-RUN echo "* * * * * cd /GarmentCode && /GarmentCode/venv/bin/python db-backup-cron-app/db-cron.py >> /var/log/cron.log 2>&1" > /etc/cron.d/db-backup-cron
+RUN echo "* * * * * cd /GarmentCode && /venv/bin/python db-backup-cron-app/db-cron.py >> /var/log/cron.log 2>&1" > /etc/cron.d/db-backup-cron
 RUN chmod 0644 /etc/cron.d/db-backup-cron
 
 # Create log file for cron
