@@ -20,6 +20,8 @@ if service_account.json is not yet generated, follow these steps [Steps to gener
 
 cd /path/to/project
 
-### 5. docker compose up
+### 5. Make sure docker-compose.yaml exists, Then Run
+
+    docker compose up
 
 build starts and the applications runs at PORT 3000.
