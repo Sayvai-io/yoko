@@ -2,5 +2,44 @@ tmp_gui/
 Logs
 data
 .nicegui
-__pycache__
 app.db
+
+api_svg.py
+# Jupyter tmp files
+.ipynb_checkpoints
+
+# VSCode settings
+*.code-workspace
+.vscode
+__pycache__
+
+# PyCharm
+.idea
+app.db
+db-backups
+
+# Data folder for inputs
+data/
+
+#Environment file
+.env
+
+# Compiled files
+*.pyc
+dist
+*egg-info*
+
+# Maya
+.mayaSwatches
+
+# place to store render scenes
+**/data_generation/Scenes
+
+# file for small script tries
+tmp*
+*tmp*.mb
+Logs*
+output*
+
+# Nicegui
+.nicegui

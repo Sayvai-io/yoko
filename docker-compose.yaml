@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  garment-app:
+    image: garmentcode
+    container_name: garment-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./db-backup-cron-app:/GarmentCode/db-backup-cron-app
+      - ./logs:/var/log
+      - ./data:/GarmentCode/data
+    environment:
+      - PORT=3000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - UI_STORAGE_KEY=${UI_STORAGE_KEY}
+      - DATABASE=${DATABASE}
+      - DATABASE_URL=${DOCKER_DATABASE_URL}
+      - DATABASE_PATH=${DOCKER_DATABASE_PATH}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_DB=${MYSQL_DB}
+      - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID}
+      - GOOGLE_SERVICE_ACCOUNT_FILE=${DOCKER_GOOGLE_SERVICE_ACCOUNT_FILE}
+      - BACKUP_DIR=${DOCKER_BACKUP_DIR}
+      - BACKUP_PASSWORD=${BACKUP_PASSWORD}
+    runtime: nvidia
+    restart: unless-stopped
