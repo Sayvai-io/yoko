@@ -14,7 +14,7 @@ Clone the repository now [Yoko/GarmentCode](https://github.com/Sayvai-io/yoko.gi
 
 if service_account.json is not yet generated, follow these steps [Steps to generate](../db-backup-cron-app/README.md)
 
-### 3. Configure system.template.json values (Optional)
+### 3. Configure system.json values with reference of system.template.json
 
 ### 4. Make sure your are inside our project repo
 

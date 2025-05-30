@@ -19,8 +19,8 @@ DATABASE = os.getenv("DATABASE", "sqlite").lower()
 # default_dir = os.path.join(BASE_DIR, "db-backups")
 BACKUP_DIR = os.getenv("BACKUP_DIR", "./db-backup-cron-app/db-backups")
 
+DRIVE_FOLDER_ID = "1brN7DPFZGp45I_N-zrknZpZ77LjV6RhN"
 SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
-DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "1uq6E3fMHvW-w84bFP_QH5HkAvBMywH-U")  # Optional folder ID
 BACKUP_PASSWORD = os.getenv("BACKUP_PASSWORD", "yoko@123")  # Password for encrypted backups
 # TIME_INTERVAL = os.getenv("CRON_TIME_INTERVAL", 604800)  # 7 days once by default
 

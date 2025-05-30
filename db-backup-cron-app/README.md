@@ -55,6 +55,10 @@ GOOGLE_SERVICE_ACCOUNT_FILE=service_account.json
 BACKUP_DIR=./db-backup-cron-app/db-backups
 ```
 
+> 🔒 Also ensure the same <google_drive_folder_id> is configured in [DB_CRON_FILE](./db-cron.py) DRIVE_FOLDER_ID varibale
+
+    DRIVE_FOLDER_ID = <google_drive_folder_id>
+
 > 🔒 Ensure `.env` and `service_account.json` are included in `.gitignore` to avoid committing sensitive information.
 
 ---

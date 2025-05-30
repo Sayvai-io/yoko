@@ -22,6 +22,12 @@ pip install pygarment
 <build and install warp for GarmentCode>
 ```
 
+#### Create .env as mentioned in .env.example file
+
+#### Configure system.json values with reference to system.template.json
+
+#### For Database Backup, Setup using [Docker](./Dockerization.md) (Optional)
+
 ## Warp simulator
 
 We use our own version of the [NVIDIA warp](https://github.com/maria-korosteleva/NvidiaWarp-GarmentCode) simulator. It should be installed manually to use our library correctly.

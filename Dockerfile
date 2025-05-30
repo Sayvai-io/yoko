@@ -67,7 +67,7 @@ RUN git clone https://github.com/maria-korosteleva/NvidiaWarp-GarmentCode /Nvidi
 
 COPY . /GarmentCode
 
-RUN mv /GarmentCode/system.template.json /GarmentCode/system.json
+RUN mv /GarmentCode/system.json /GarmentCode/system.json
 
 COPY ./service_account.json /service_account.json
 
@@ -88,7 +88,7 @@ COPY db-backup-cron-app/db-cron.py /GarmentCode/db-backup-cron-app/
 RUN chmod +x /GarmentCode/db-backup-cron-app/db-cron.py
 
 # Create cron job to run backup every day at 2 AM (0 2 * * *)
-RUN printf "SHELL=/bin/bash\nPATH=/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\nPYTHONPATH=/GarmentCode\n\n* * * * * root cd /GarmentCode && /venv/bin/python db-backup-cron-app/db-cron.py >> /var/log/cron.log 2>&1\n" > /etc/cron.d/db-backup-cron \
+RUN printf "SHELL=/bin/bash\nPATH=/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\nPYTHONPATH=/GarmentCode\n\n0 2 * * * root cd /GarmentCode && /venv/bin/python db-backup-cron-app/db-cron.py >> /var/log/cron.log 2>&1\n" > /etc/cron.d/db-backup-cron \
  && chmod 0644 /etc/cron.d/db-backup-cron
 
 # Create log file for cron
