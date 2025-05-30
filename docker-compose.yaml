@@ -31,4 +31,5 @@ services:
       - GOOGLE_SERVICE_ACCOUNT_FILE=${DOCKER_GOOGLE_SERVICE_ACCOUNT_FILE}
       - BACKUP_DIR=${DOCKER_BACKUP_DIR}
       - BACKUP_PASSWORD=${BACKUP_PASSWORD}
+    runtime: nvidia
     restart: unless-stopped

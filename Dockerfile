@@ -1,7 +1,7 @@
 FROM ubuntu:24.04
 
 ENV LANG C.UTF-8
-ENV CUDA_VERSION 12.9
+ENV CUDA_VERSION 12.8
 ENV PATH /usr/local/cuda/bin:$PATH
 ENV LD_LIBRARY_PATH /usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ENV DEBIAN_FRONTEND=noninteractive
@@ -46,13 +46,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # cuda installation starts
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin
-RUN mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-RUN wget https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda-repo-ubuntu2204-12-9-local_12.9.0-575.51.03-1_amd64.deb
-RUN dpkg -i cuda-repo-ubuntu2204-12-9-local_12.9.0-575.51.03-1_amd64.deb
-RUN cp /var/cuda-repo-ubuntu2204-12-9-local/cuda-*-keyring.gpg /usr/share/keyrings/
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-ubuntu2404.pin
+RUN mv cuda-ubuntu2404.pin /etc/apt/preferences.d/cuda-repository-pin-600
+RUN wget https://developer.download.nvidia.com/compute/cuda/12.8.0/local_installers/cuda-repo-ubuntu2404-12-8-local_12.8.0-570.86.10-1_amd64.deb
+RUN dpkg -i cuda-repo-ubuntu2404-12-8-local_12.8.0-570.86.10-1_amd64.deb
+RUN cp /var/cuda-repo-ubuntu2404-12-8-local/cuda-*-keyring.gpg /usr/share/keyrings/
 RUN apt-get update
-RUN apt-get -y install cuda-toolkit-12-9
+RUN apt-get -y install cuda-toolkit-12-8
 # cuda installation ends
 
 # Create and activate virtual environment
@@ -67,7 +67,7 @@ RUN git clone https://github.com/maria-korosteleva/NvidiaWarp-GarmentCode /Nvidi
 
 COPY . /GarmentCode
 
-RUN mv /GarmentCode/system.json /GarmentCode/system.json
+COPY ./system.json /GarmentCode/system.json
 
 COPY ./service_account.json /service_account.json
 
