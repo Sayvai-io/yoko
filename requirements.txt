@@ -2,9 +2,19 @@ pygarment
 openai
 google-genai
 pyjwt
+pymysql
 sqlalchemy
 bcrypt
 ezdxf
 rich
+<<<<<<< HEAD
 fastapi
 uvicorn
+=======
+pydrive
+pyminizip
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+>>>>>>> f20c6f13d9ecc069292c6e8158d8049e235ff0e7
