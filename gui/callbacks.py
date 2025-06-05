@@ -876,11 +876,14 @@ class GUIState:
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
 
         except Exception as e:
-            ui.notify(f"Failed to process input: {str(e)}", type='negative')
+            # Log the actual error
+            print(f"Error processing input: {str(e)}")
+            # Display generic message to user
+            ui.notify('Something went wrong. Please try again.', type='negative')
             with self.chat_container:
                 with ui.card().classes('w-3/4 mr-auto bg-red-100 rounded-lg'):
                     with ui.column().classes('p-3 gap-1'):
-                        ui.label("Sorry, I couldn't process that input. Please try again.").classes('text-gray-800')
+                        ui.label("Sorry, something went wrong. Please try again.").classes('text-gray-800')
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
 
         try:
