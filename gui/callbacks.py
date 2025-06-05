@@ -954,14 +954,18 @@ class GUIState:
             ui.notify(f'Successfully processed {e.name}')
             self.upload_dialog.close()
 
-        except Exception as err:
-            ui.notify(f'Failed to process image: {str(err)}', type='negative')
+        except Exception as e:
+            # Log the actual error
+            print(f"Error processing input Image: {str(e)}")
+            # Display generic message to user
+            ui.notify('Something went wrong. Please try again.', type='negative')
             with self.chat_container:
                 with ui.card().classes('w-3/4 mr-auto bg-red-100 rounded-lg'):
                     with ui.column().classes('p-3 gap-1'):
-                        ui.label("Sorry, I couldn't process that image. Please try again.").classes('text-gray-800')
+                        ui.label("Sorry, something went wrong. Please try again.").classes('text-gray-800')
                         ui.label(datetime.now().strftime('%H:%M')).classes('text-xs text-gray-500')
 
+                        
         try:
             self.loop = asyncio.get_event_loop()
             await self.loop.run_in_executor(self._async_executor, self._sync_update_3d)
